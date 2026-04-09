@@ -1,6 +1,9 @@
 # Personal data
 data/
 
+# Claude Code local settings (personal — not shared project config)
+.claude
+
 # Environment variables
 .env
 .env.local
