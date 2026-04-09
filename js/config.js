@@ -70,6 +70,10 @@ export const config = {
   TMDB_API_KEY: "fdbd48d6b9b3ff8738ec2b019ef85004",   // <-- paste your TMDB API key here
   TMDB_LANGUAGE: "en-GB",
 
+  // CSV source — swap to your personal file locally
+  // e.g. CSV_PATH: "./data/Sams_Physical_Media.csv"
+  CSV_PATH: "./data/sample.csv",
+
   // Covers
   COVERS_ROOT: "./data/covers",
 

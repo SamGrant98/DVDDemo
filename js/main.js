@@ -182,7 +182,7 @@ towerScroll.setLocked(true);
 let booted = false;
 
 try {
-  const rows = await loadDVDCSV("./data/Sams_Physical_Media.csv");
+  const rows = await loadDVDCSV(config.CSV_PATH || "./data/sample.csv");
   console.log("[CSV] rows loaded:", rows.length);
 
   // Enrich with TMDB posters (front cover fallback)
