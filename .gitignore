@@ -1,0 +1,13 @@
+# Personal data
+data/
+
+# Environment variables
+.env
+.env.local
+
+# Dependencies
+node_modules/
+
+# OS clutter
+.DS_Store
+Thumbs.db
