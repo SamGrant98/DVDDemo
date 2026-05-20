@@ -14,7 +14,10 @@ import { createInteraction } from "./interaction.js";
 import { createTMDBClient } from "./tmdbClient.js";
 import { createCoverService } from "./coverService.js";
 
-mountUIControls("controls");
+// Dev tuning panel — only mounts when ?dev=1 is in the URL.
+if (new URLSearchParams(window.location.search).has("dev")) {
+  mountUIControls("controls");
+}
 
 const ui = document.getElementById("ui");
 const meta = document.getElementById("meta");
@@ -61,7 +64,6 @@ window.__controls = controls;
 
 // --- TMDB cover enrichment setup ---
 const tmdb = createTMDBClient({
-  apiKey: config.TMDB_API_KEY,
   language: config.TMDB_LANGUAGE || "en-GB",
 });
 
@@ -185,14 +187,16 @@ try {
   const rows = await loadDVDCSV(config.CSV_PATH || "./data/sample.csv");
   console.log("[CSV] rows loaded:", rows.length);
 
-  // Enrich with TMDB posters (front cover fallback)
-  if (config.TMDB_API_KEY && String(config.TMDB_API_KEY).trim().length) {
-    ui.textContent = "Fetching posters from TMDB…";
+  // Enrich with TMDB posters (front cover fallback) via the /api/tmdb proxy.
+  // If the proxy is unavailable (local static dev, network failure, missing env
+  // var on the server), fall back to rendering without covers rather than failing.
+  ui.textContent = "Fetching posters from TMDB…";
+  try {
     const enriched = await covers.enrichRows(rows);
     dvdStack.setData(enriched);
-  } else {
-    console.warn("[TMDB] No API key set. Using CSV data only.");
-    ui.textContent = "No TMDB key set (covers disabled). Building tower…";
+  } catch (err) {
+    console.warn("[TMDB] Cover enrichment failed; using CSV data only.", err);
+    ui.textContent = "Could not fetch posters — building tower without them…";
     dvdStack.setData(rows);
   }
 

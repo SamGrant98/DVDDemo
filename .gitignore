@@ -12,6 +12,10 @@ data/
 # Dependencies
 node_modules/
 
+# Vercel
+.vercel/
+
 # OS clutter
 .DS_Store
 Thumbs.db
+.vercel

@@ -1,7 +1,6 @@
 const deg = (d) => (d * Math.PI) / 180;
 
 export const config = {
-  count: 200,
   stepY: 0.34,
 
   // Elastic drag
@@ -66,8 +65,8 @@ export const config = {
   buildDropSmooth: 14.0,
   buildAllowSkipKey: true,
 
-  // TMDB
-  TMDB_API_KEY: "fdbd48d6b9b3ff8738ec2b019ef85004",   // <-- paste your TMDB API key here
+  // TMDB — the API key now lives server-side in the /api/tmdb proxy
+  // (Vercel env var TMDB_API_KEY). The client only configures the language.
   TMDB_LANGUAGE: "en-GB",
 
   // CSV source — swap to your personal file locally

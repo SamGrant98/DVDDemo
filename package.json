@@ -1,0 +1,10 @@
+{
+  "name": "dvd-madebysam-dev",
+  "version": "0.1.0",
+  "private": true,
+  "description": "3D DVD-stack visualizer of Sam's physical media collection. Deployed at dvd.madebysam.dev.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  }
+}

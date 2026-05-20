@@ -4,6 +4,8 @@ export function mountUIControls(containerId = "controls") {
   const el = document.getElementById(containerId);
   if (!el) return;
 
+  el.hidden = false;
+
   el.innerHTML = `
     <div style="font-weight:700; margin-bottom:10px;">Tweak Controls</div>
 
