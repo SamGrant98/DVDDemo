@@ -17,6 +17,18 @@ import { createCoverService } from "./coverService.js";
 // Collection persistence (IndexedDB)
 import { loadActiveCollection } from "./collectionStore.js";
 
+// CSV upload modal (drag-drop + file picker + template download)
+import { mountUploader } from "./csvUpload.js";
+
+// Per-DVD add/edit/delete editor
+import { mountEditor } from "./collectionEditor.js";
+
+// Search + filter chip widget
+import { mountFilterPanel } from "./filterPanel.js";
+
+// Collection stats overlay (modal with bar charts)
+import { mountStatsOverlay } from "./statsOverlay.js";
+
 // Dev tuning panel — only mounts when ?dev=1 is in the URL.
 if (new URLSearchParams(window.location.search).has("dev")) {
   mountUIControls("controls");
@@ -75,11 +87,21 @@ const covers = createCoverService({
   localCoverRoot: config.COVERS_ROOT || "./data/covers",
 });
 
+// --- Editor / state ---
+
+// Currently focused DVD's row data (for editor Edit/Delete actions).
+let focusedRowData = null;
+
+// Currently displayed rows (demo or user collection). Source of truth for the
+// editor's mutations.
+let currentRows = [];
+
 // --- UI helpers ---
 function showMetaFor(mesh) {
   if (!meta || !metaBody) return;
 
   const d = mesh?.userData?.data || {};
+  focusedRowData = mesh?.userData?.data || null;
   meta.style.display = "block";
 
   const safeLink =
@@ -106,6 +128,7 @@ function showMetaFor(mesh) {
 function hideMeta() {
   if (!meta) return;
   meta.style.display = "none";
+  focusedRowData = null;
 }
 
 // Back button exits focus
@@ -180,6 +203,44 @@ window.addEventListener(
   { passive: true }
 );
 
+// Mount the upload modal so users can swap in their own collection.
+await mountUploader({
+  openButton: document.getElementById("btnLoadYours"),
+  modal: document.getElementById("uploadModal"),
+  closeButton: document.getElementById("modalClose"),
+  dropzone: document.getElementById("dropzone"),
+  fileInput: document.getElementById("fileInput"),
+  statusEl: document.getElementById("uploadStatus"),
+  resetButton: document.getElementById("resetToDemo"),
+  resetSection: document.getElementById("resetSection"),
+});
+
+// Mount the add/edit/delete editor.
+mountEditor({
+  formModal: document.getElementById("editorModal"),
+  formEl: document.getElementById("editorForm"),
+  formCloseButton: document.getElementById("editorClose"),
+  formCancelButton: document.getElementById("editorCancel"),
+  formTitleEl: document.getElementById("editorTitle"),
+  addButton: document.getElementById("addFilm"),
+  editButton: document.getElementById("btnEdit"),
+  deleteButton: document.getElementById("btnDelete"),
+  getCurrentRows: () => currentRows,
+  getFocusedRow: () => focusedRowData,
+});
+
+// Wire the sort bar — segmented pill control at top-centre.
+const sortBar = document.getElementById("sortBar");
+sortBar?.addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-sort]");
+  if (!btn) return;
+  const mode = btn.dataset.sort;
+  dvdStack.setSortMode(mode);
+  sortBar.querySelectorAll(".sortbar__btn").forEach((b) => {
+    b.classList.toggle("sortbar__btn--active", b.dataset.sort === mode);
+  });
+});
+
 // ---------- BOOT: load active collection (IndexedDB → demo fallback) ----------
 ui.textContent = "Loading collection…";
 towerScroll.setLocked(true);
@@ -197,6 +258,7 @@ try {
     console.log("[collection] No saved collection — loading demo");
     rows = await loadDVDCSV(config.DEMO_CSV_PATH || "./data/demo.csv");
   }
+  currentRows = rows;
 
   // 2. Enrich with TMDB posters via the /api/tmdb proxy. If the proxy is
   //    unavailable (local static dev, network failure, missing env var), fall
@@ -210,6 +272,34 @@ try {
     ui.textContent = "Could not fetch posters — building tower without them…";
     dvdStack.setData(rows);
   }
+
+  // 3. Mount the search + filter chip widget now that we have rows
+  //    available for chip extraction (genres, decades, etc.).
+  mountFilterPanel({
+    rows,
+    toggleEl: document.getElementById("filterToggle"),
+    bodyEl: document.getElementById("filterBody"),
+    badgeEl: document.getElementById("filterBadge"),
+    searchEl: document.getElementById("filterSearch"),
+    genresEl: document.getElementById("filterGenres"),
+    decadesEl: document.getElementById("filterDecades"),
+    ratingsEl: document.getElementById("filterRatings"),
+    countEl: document.getElementById("filterCount"),
+    clearEl: document.getElementById("filterClear"),
+    onFilterChange: (predicate) => dvdStack.setFilter(predicate),
+  });
+
+  // 4. Mount the collection stats overlay (modal with bar charts).
+  mountStatsOverlay({
+    rows,
+    toggleEl: document.getElementById("statsToggle"),
+    modal: document.getElementById("statsModal"),
+    closeButton: document.getElementById("statsClose"),
+    summaryEl: document.getElementById("statsSummary"),
+    decadesEl: document.getElementById("statsDecades"),
+    genresEl: document.getElementById("statsGenres"),
+    ratingsEl: document.getElementById("statsRatings"),
+  });
 
   if (dvdStack.isBuilding()) {
     ui.textContent = "Building tower… (Space to skip)";

@@ -16,13 +16,123 @@
   <style>
     html, body { margin: 0; height: 100%; overflow: hidden; background: #111114; }
     #ui {
-      position: fixed; top: 12px; left: 12px;
-      padding: 10px 12px; border-radius: 10px;
-      background: rgba(0,0,0,0.6); color: white;
-      font: 14px/1.3 system-ui;
+      position: fixed; bottom: 12px; left: 12px;
+      padding: 8px 12px; border-radius: 10px;
+      background: rgba(0,0,0,0.4); color: white;
+      font: 12px/1.3 system-ui;
       pointer-events: none;
       max-width: 420px;
+      opacity: 0.85;
     }
+
+    /* Filter panel — top-left, collapsible */
+    .filterpanel {
+      position: fixed; top: 12px; left: 12px;
+      z-index: 50;
+      font: 12px system-ui;
+      color: white;
+    }
+    .filterpanel__toggle {
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 999px;
+      padding: 6px 14px;
+      color: white;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font: 12px system-ui;
+    }
+    .filterpanel__toggle:hover { background: rgba(0,0,0,0.7); }
+    .filterpanel__badge {
+      background: rgba(255,255,255,0.2);
+      border-radius: 999px;
+      padding: 1px 6px;
+      font-size: 10px;
+      font-weight: 700;
+      min-width: 8px;
+      text-align: center;
+    }
+    .filterpanel__body {
+      margin-top: 8px;
+      background: rgba(0,0,0,0.7);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 12px;
+      backdrop-filter: blur(8px);
+      width: 280px;
+      max-height: calc(100vh - 80px);
+      overflow-y: auto;
+    }
+    .filterpanel__body[hidden] { display: none; }
+    .filterpanel__search {
+      width: 100%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      color: white;
+      padding: 8px 10px;
+      font: 12px system-ui;
+      box-sizing: border-box;
+      margin-bottom: 12px;
+    }
+    .filterpanel__search:focus {
+      outline: 0;
+      border-color: rgba(255,255,255,0.3);
+      background: rgba(255,255,255,0.08);
+    }
+    .filterpanel__group { margin-bottom: 12px; }
+    .filterpanel__label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      opacity: 0.5;
+      margin-bottom: 6px;
+    }
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+    .chip {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid transparent;
+      color: rgba(255,255,255,0.8);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font: 11px system-ui;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .chip:hover { background: rgba(255,255,255,0.15); }
+    .chip--active {
+      background: rgba(255,255,255,0.25);
+      border-color: rgba(255,255,255,0.3);
+      color: white;
+    }
+    .filterpanel__footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      opacity: 0.85;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .filterpanel__clear {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.12);
+      color: white;
+      padding: 4px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font: 11px system-ui;
+    }
+    .filterpanel__clear:hover { background: rgba(255,255,255,0.06); }
     #controls {
       position: fixed; top: 12px; right: 12px;
       padding: 12px; border-radius: 14px;
@@ -63,19 +173,339 @@
     }
     #btnBack:hover { background: rgba(255,255,255,0.2); }
 
-    #hint {
-      position: fixed; bottom: 12px; left: 12px;
-      padding: 8px 10px; border-radius: 10px;
-      background: rgba(0,0,0,0.4); color: white;
-      font: 12px/1.3 system-ui;
-      pointer-events: none;
+    .meta__actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .meta__actions button {
+      flex: 1;
+      border: 0;
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font: 12px system-ui;
+    }
+    .meta__action-edit {
+      background: rgba(255,255,255,0.12);
+      color: white;
+    }
+    .meta__action-edit:hover { background: rgba(255,255,255,0.2); }
+    .meta__action-delete {
+      background: rgba(255,80,80,0.15);
+      color: #ff8a8a;
+    }
+    .meta__action-delete:hover { background: rgba(255,80,80,0.25); }
+
+    #hint { display: none; } /* superseded by the filter panel + intrinsic UI affordances */
+
+    /* Stats pill — top-right counterpart to the Filter pill */
+    #statsToggle {
+      position: fixed; top: 12px; right: 12px;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 999px;
+      padding: 6px 14px;
+      color: white;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      font: 12px system-ui;
+      z-index: 50;
+    }
+    #statsToggle:hover { background: rgba(0,0,0,0.7); }
+
+    /* Stats modal bars */
+    .stats__section { margin-top: 16px; }
+    .stats__section h3 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      opacity: 0.5;
+      margin: 0 0 8px;
+      font-weight: 600;
+    }
+    .stats__bars { display: flex; flex-direction: column; gap: 4px; }
+    .stats__bar {
+      display: grid;
+      grid-template-columns: 90px 1fr 32px;
+      gap: 8px;
+      align-items: center;
+      font-size: 12px;
+    }
+    .stats__bar-label {
+      opacity: 0.85;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .stats__bar-track {
+      background: rgba(255,255,255,0.06);
+      border-radius: 4px;
+      height: 14px;
+      overflow: hidden;
+    }
+    .stats__bar-fill {
+      background: linear-gradient(90deg, rgba(255,255,255,0.45), rgba(255,255,255,0.85));
+      height: 100%;
+      border-radius: 4px;
+    }
+    .stats__bar-count {
+      text-align: right;
+      opacity: 0.7;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Sort bar — top-centre, segmented pill control */
+    .sortbar {
+      position: fixed;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 2px;
+      padding: 4px;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 999px;
+      backdrop-filter: blur(8px);
+      z-index: 40;
+    }
+    .sortbar__btn {
+      background: transparent;
+      border: 0;
+      color: rgba(255,255,255,0.6);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font: 12px system-ui;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .sortbar__btn:hover { color: white; }
+    .sortbar__btn--active {
+      background: rgba(255,255,255,0.15);
+      color: white;
+    }
+
+    /* "Load your collection" CTA — bottom-centre, the primary public-tool entry point */
+    #btnLoadYours {
+      position: fixed;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 18px;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.1);
+      color: white;
+      font: 13px system-ui;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      z-index: 50;
+    }
+    #btnLoadYours:hover { background: rgba(255,255,255,0.18); }
+
+    /* Modals (shared styling for upload + editor) */
+    .modal {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    .modal[hidden] { display: none; }
+    .modal__panel {
+      background: #18181c;
+      color: white;
+      padding: 24px;
+      border-radius: 16px;
+      width: calc(100% - 32px);
+      max-width: 480px;
+      max-height: calc(100% - 32px);
+      overflow-y: auto;
+      font: 14px/1.4 system-ui;
+      position: relative;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .modal__panel h2 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+    .modal__close {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: transparent;
+      border: 0;
+      color: rgba(255,255,255,0.7);
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+      width: 32px;
+      height: 32px;
+    }
+    .modal__close:hover { color: white; }
+    .muted {
+      opacity: 0.65;
+      margin: 0 0 16px;
+      font-size: 12px;
+    }
+    .dropzone {
+      border: 2px dashed rgba(255,255,255,0.2);
+      border-radius: 12px;
+      padding: 32px;
+      text-align: center;
+      margin-bottom: 12px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .dropzone--over {
+      border-color: rgba(255,255,255,0.5);
+      background: rgba(255,255,255,0.05);
+    }
+    .dropzone p {
+      margin: 0;
       opacity: 0.85;
     }
+    .dropzone .or {
+      margin: 8px 0;
+      opacity: 0.4;
+      font-size: 11px;
+    }
+    .file-label {
+      display: inline-block;
+      padding: 8px 14px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.12);
+      color: white;
+      cursor: pointer;
+      font: 13px system-ui;
+      border: 0;
+    }
+    .file-label:hover { background: rgba(255,255,255,0.2); }
+    .modal__links {
+      font-size: 12px;
+      opacity: 0.75;
+      margin: 8px 0 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 8px;
+    }
+    .modal__links a {
+      color: #8ab4ff;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .modal__links a:hover { text-decoration: underline; }
+    #uploadStatus {
+      margin-top: 12px;
+      font-size: 12px;
+      min-height: 18px;
+      opacity: 0.9;
+    }
+
+    /* Editor form */
+    .form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .field > span {
+      font-size: 11px;
+      opacity: 0.7;
+    }
+    .field > span em {
+      color: #ff8a8a;
+      font-style: normal;
+    }
+    .field input,
+    .field textarea {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      color: white;
+      padding: 8px 10px;
+      font: 13px system-ui;
+      width: 100%;
+      box-sizing: border-box;
+      resize: vertical;
+    }
+    .field input:focus,
+    .field textarea:focus {
+      outline: 0;
+      border-color: rgba(255,255,255,0.3);
+      background: rgba(255,255,255,0.08);
+    }
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font: 13px system-ui;
+    }
+    .btn--ghost {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.12);
+      color: white;
+    }
+    .btn--ghost:hover { background: rgba(255,255,255,0.06); }
+    .btn--primary {
+      background: rgba(255,255,255,0.92);
+      color: #18181c;
+      border: 0;
+    }
+    .btn--primary:hover { background: white; }
   </style>
 </head>
 <body>
   <div id="ui">Drag / wheel to scroll • Click a DVD to focus • Click again to flip</div>
-  <div id="hint">Click empty space or press Esc to exit focus</div>
+
+  <div id="filterPanel" class="filterpanel">
+    <button id="filterToggle" class="filterpanel__toggle" type="button" aria-expanded="false">
+      <span>Filter</span>
+      <span id="filterBadge" class="filterpanel__badge" hidden>0</span>
+    </button>
+    <div id="filterBody" class="filterpanel__body" hidden>
+      <input id="filterSearch" class="filterpanel__search" type="search" placeholder="Search title, director, cast…" />
+
+      <div class="filterpanel__group">
+        <div class="filterpanel__label">Genre</div>
+        <div id="filterGenres" class="chips"></div>
+      </div>
+
+      <div class="filterpanel__group">
+        <div class="filterpanel__label">Decade</div>
+        <div id="filterDecades" class="chips"></div>
+      </div>
+
+      <div class="filterpanel__group">
+        <div class="filterpanel__label">Minimum rating</div>
+        <div id="filterRatings" class="chips"></div>
+      </div>
+
+      <div class="filterpanel__footer">
+        <span id="filterCount">—</span>
+        <button id="filterClear" class="filterpanel__clear" type="button">Clear all</button>
+      </div>
+    </div>
+  </div>
 
   <div id="controls" hidden></div>
 
@@ -85,6 +515,122 @@
       <button id="btnBack">Back</button>
     </div>
     <div id="metaBody"></div>
+    <div class="meta__actions">
+      <button id="btnEdit" class="meta__action-edit">Edit</button>
+      <button id="btnDelete" class="meta__action-delete">Delete</button>
+    </div>
+  </div>
+
+  <button id="statsToggle" type="button">Stats</button>
+
+  <div id="sortBar" class="sortbar" role="tablist" aria-label="Sort collection by">
+    <button class="sortbar__btn sortbar__btn--active" data-sort="default">Default</button>
+    <button class="sortbar__btn" data-sort="title">Title</button>
+    <button class="sortbar__btn" data-sort="year">Year</button>
+    <button class="sortbar__btn" data-sort="rating">Rating</button>
+  </div>
+
+  <button id="btnLoadYours">Load your collection</button>
+
+  <div id="uploadModal" class="modal" hidden>
+    <div class="modal__panel">
+      <button id="modalClose" class="modal__close" aria-label="Close">&times;</button>
+      <h2>Load your collection</h2>
+      <p class="muted">Your data stays in your browser — nothing is uploaded.</p>
+
+      <div id="dropzone" class="dropzone">
+        <p>Drop a CSV file here</p>
+        <p class="or">— or —</p>
+        <label class="file-label">
+          <input type="file" id="fileInput" accept=".csv" hidden />
+          Choose file
+        </label>
+      </div>
+
+      <p class="modal__links">
+        <a href="./data/template.csv" download>Download CSV template</a>
+        <span>·</span>
+        <a id="addFilm" href="#">Add a film manually</a>
+        <span id="resetSection" hidden>
+          <span>·</span>
+          <a id="resetToDemo" href="#">Reset to demo</a>
+        </span>
+      </p>
+
+      <div id="uploadStatus" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div id="statsModal" class="modal" hidden>
+    <div class="modal__panel">
+      <button id="statsClose" class="modal__close" aria-label="Close">&times;</button>
+      <h2>Collection stats</h2>
+      <p id="statsSummary" class="muted">—</p>
+
+      <div class="stats__section">
+        <h3>By decade</h3>
+        <div id="statsDecades" class="stats__bars"></div>
+      </div>
+
+      <div class="stats__section">
+        <h3>By genre</h3>
+        <div id="statsGenres" class="stats__bars"></div>
+      </div>
+
+      <div class="stats__section">
+        <h3>By rating</h3>
+        <div id="statsRatings" class="stats__bars"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="editorModal" class="modal" hidden>
+    <div class="modal__panel">
+      <button id="editorClose" class="modal__close" aria-label="Close">&times;</button>
+      <h2 id="editorTitle">Add a film</h2>
+
+      <form id="editorForm" class="form" novalidate>
+        <label class="field">
+          <span>Movie Title <em>*</em></span>
+          <input name="title" type="text" required maxlength="200" autocomplete="off" />
+        </label>
+        <div class="field-row">
+          <label class="field">
+            <span>Year</span>
+            <input name="year" type="number" min="1880" max="2099" step="1" />
+          </label>
+          <label class="field">
+            <span>Rating (out of 5)</span>
+            <input name="rating" type="number" min="0" max="5" step="0.5" />
+          </label>
+        </div>
+        <label class="field">
+          <span>Director</span>
+          <input name="director" type="text" maxlength="200" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Starring</span>
+          <input name="starring" type="text" maxlength="500" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Genre</span>
+          <input name="genre" type="text" maxlength="200" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Letterboxd URL</span>
+          <input name="letterboxd" type="url" />
+        </label>
+        <label class="field">
+          <span>Notes</span>
+          <textarea name="notes" rows="3" maxlength="500"></textarea>
+        </label>
+
+        <div class="form-actions">
+          <button type="button" id="editorCancel" class="btn btn--ghost">Cancel</button>
+          <button type="submit" class="btn btn--primary">Save</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <script type="module" src="./js/main.js"></script>

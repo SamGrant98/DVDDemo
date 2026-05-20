@@ -51,15 +51,12 @@ function parseCSV(text) {
   return rows.filter(r => r.some(c => c.trim().length));
 }
 
-// ✅ THIS is what main.js is importing
-export async function loadDVDCSV(url) {
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) throw new Error(`Failed to load CSV: ${res.status}`);
-
-  const text = await res.text();
+// Parses raw CSV text into the row shape main.js expects, and also returns the
+// original header list so callers (e.g. the upload validator) can check which
+// columns were present. Used by both loadDVDCSV (URL fetch) and the upload UI.
+export function parseCollectionText(text) {
   const grid = parseCSV(text);
-
-  const headers = grid[0];
+  const headers = grid[0] || [];
   const idx = (h) => headers.indexOf(h);
 
   const iTitle = idx("Movie Title");
@@ -71,7 +68,8 @@ export async function loadDVDCSV(url) {
   const iLetterboxd = idx("Letterboxd URL");
   const iNotes = idx("Notes");
 
-  return grid.slice(1).map(row => ({
+  const rows = grid.slice(1).map(row => ({
+    __id: crypto.randomUUID(),
     title: row[iTitle] || "",
     year: row[iYear] || "",
     director: row[iDirector] || "",
@@ -81,4 +79,14 @@ export async function loadDVDCSV(url) {
     letterboxd: row[iLetterboxd] || "",
     notes: row[iNotes] || "",
   })).filter(d => d.title);
+
+  return { headers, rows };
+}
+
+export async function loadDVDCSV(url) {
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Failed to load CSV: ${res.status}`);
+  const text = await res.text();
+  const { rows } = parseCollectionText(text);
+  return rows;
 }

@@ -51,6 +51,16 @@ const FACE_BACK       = 3; // -Y (back face)
 const FACE_SIDE_POSZ  = 4; // +Z
 const FACE_SIDE_NEGZ  = 5; // -Z
 
+// Sort modes for the tower. `compare = null` preserves the row's original
+// CSV order. Re-sorts mutate each mesh's userData.index + homePos.y and the
+// existing position smoother animates them into place.
+export const SORT_MODES = {
+  default: { label: "Default", compare: null },
+  title:   { label: "Title",   compare: (a, b) => (a.title || "").localeCompare(b.title || "") },
+  year:    { label: "Year",    compare: (a, b) => (Number(b.year) || 0) - (Number(a.year) || 0) },
+  rating:  { label: "Rating",  compare: (a, b) => (Number(b.rating) || 0) - (Number(a.rating) || 0) },
+};
+
 export function createDVDStack(scene) {
   const width  = 2.0;
   const thick  = config.dvdThickness;     // e.g. 0.18
@@ -75,10 +85,20 @@ export function createDVDStack(scene) {
   let focused = null;
   let flipY = 0;
 
+  let currentSortMode = "default";
+  let filterPredicate = null;
+  let visibleCount = 0;
+
   let mouseTarget = { x: 0, y: 0 };
   let mouseSmooth = { x: 0, y: 0 };
 
-  const stackHeight = () => Math.max(0, (rows.length - 1) * STEP_Y);
+  const stackHeight = () => {
+    // When a filter is active the tower compresses to just the visible items;
+    // otherwise it spans the full collection so the scroll range is calibrated
+    // for the build animation too.
+    if (filterPredicate) return Math.max(0, (visibleCount - 1) * STEP_Y);
+    return Math.max(0, (rows.length - 1) * STEP_Y);
+  };
 
   // --- Shared base materials ---
   const blackMat = new THREE.MeshStandardMaterial({
@@ -368,11 +388,54 @@ export function createDVDStack(scene) {
     mode = "tower";
     focused = null;
     flipY = 0;
+    currentSortMode = "default";
 
     if (!building) {
       while (buildIndex < rows.length) addDVD(buildIndex++, true);
       building = false;
     }
+  }
+
+  // Shared "apply current view" routine — handles sort + filter together so
+  // the two can compose. Caches each mesh's original CSV index on first run
+  // so subsequent re-sorts always resolve from a stable baseline.
+  function applyView() {
+    if (mode === "focus") setModeTower();
+
+    const sort = SORT_MODES[currentSortMode];
+
+    const visible = [];
+    for (const m of dvds) {
+      if (m.userData.originalIndex === undefined) {
+        m.userData.originalIndex = m.userData.index;
+      }
+      const passes = filterPredicate ? filterPredicate(m.userData.data) : true;
+      m.visible = passes;
+      if (passes) visible.push(m);
+    }
+    visibleCount = visible.length;
+
+    if (sort.compare) {
+      visible.sort((a, b) => sort.compare(a.userData.data, b.userData.data));
+    } else {
+      visible.sort((a, b) => a.userData.originalIndex - b.userData.originalIndex);
+    }
+
+    for (let i = 0; i < visible.length; i++) {
+      visible[i].userData.index = i;
+      visible[i].userData.homePos.y = i * STEP_Y;
+    }
+  }
+
+  function setSortMode(modeName) {
+    if (!SORT_MODES[modeName]) return;
+    currentSortMode = modeName;
+    applyView();
+  }
+
+  function setFilter(predicate) {
+    filterPredicate = predicate || null;
+    applyView();
   }
 
   function skipBuild() {
@@ -532,6 +595,12 @@ export function createDVDStack(scene) {
     toggleFlip,
 
     setFeaturedMouseNDC,
+
+    setSortMode,
+    getSortMode: () => currentSortMode,
+    setFilter,
+    clearFilter: () => setFilter(null),
+    getVisibleCount: () => (filterPredicate ? visibleCount : rows.length),
 
     updateTargets,
     apply,
