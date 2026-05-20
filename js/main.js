@@ -14,6 +14,9 @@ import { createInteraction } from "./interaction.js";
 import { createTMDBClient } from "./tmdbClient.js";
 import { createCoverService } from "./coverService.js";
 
+// Collection persistence (IndexedDB)
+import { loadActiveCollection } from "./collectionStore.js";
+
 // Dev tuning panel — only mounts when ?dev=1 is in the URL.
 if (new URLSearchParams(window.location.search).has("dev")) {
   mountUIControls("controls");
@@ -177,19 +180,27 @@ window.addEventListener(
   { passive: true }
 );
 
-// ---------- BOOT: load CSV first ----------
-ui.textContent = "Loading CSV…";
+// ---------- BOOT: load active collection (IndexedDB → demo fallback) ----------
+ui.textContent = "Loading collection…";
 towerScroll.setLocked(true);
 
 let booted = false;
 
 try {
-  const rows = await loadDVDCSV(config.CSV_PATH || "./data/sample.csv");
-  console.log("[CSV] rows loaded:", rows.length);
+  // 1. Try the user's saved collection from IndexedDB; fall back to the bundled demo.
+  let rows;
+  const stored = await loadActiveCollection();
+  if (stored?.rows?.length) {
+    console.log(`[collection] Loaded ${stored.rows.length} rows from IndexedDB (source: ${stored.source})`);
+    rows = stored.rows;
+  } else {
+    console.log("[collection] No saved collection — loading demo");
+    rows = await loadDVDCSV(config.DEMO_CSV_PATH || "./data/demo.csv");
+  }
 
-  // Enrich with TMDB posters (front cover fallback) via the /api/tmdb proxy.
-  // If the proxy is unavailable (local static dev, network failure, missing env
-  // var on the server), fall back to rendering without covers rather than failing.
+  // 2. Enrich with TMDB posters via the /api/tmdb proxy. If the proxy is
+  //    unavailable (local static dev, network failure, missing env var), fall
+  //    back to rendering without covers rather than failing the whole boot.
   ui.textContent = "Fetching posters from TMDB…";
   try {
     const enriched = await covers.enrichRows(rows);

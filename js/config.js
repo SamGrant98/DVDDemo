@@ -69,9 +69,9 @@ export const config = {
   // (Vercel env var TMDB_API_KEY). The client only configures the language.
   TMDB_LANGUAGE: "en-GB",
 
-  // CSV source — swap to your personal file locally
-  // e.g. CSV_PATH: "./data/Sams_Physical_Media.csv"
-  CSV_PATH: "./data/sample.csv",
+  // Demo CSV — loaded on first visit (or after a user clears their collection).
+  // Once a user uploads their own CSV it lives in IndexedDB; the demo is the fallback.
+  DEMO_CSV_PATH: "./data/demo.csv",
 
   // Covers
   COVERS_ROOT: "./data/covers",

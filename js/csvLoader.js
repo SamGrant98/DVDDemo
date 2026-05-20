@@ -69,6 +69,7 @@ export async function loadDVDCSV(url) {
   const iGenre = idx("Genre");
   const iRating = idx("Rating (out of 5)");
   const iLetterboxd = idx("Letterboxd URL");
+  const iNotes = idx("Notes");
 
   return grid.slice(1).map(row => ({
     title: row[iTitle] || "",
@@ -77,6 +78,7 @@ export async function loadDVDCSV(url) {
     starring: row[iStarring] || "",
     genre: row[iGenre] || "",
     rating: row[iRating] || "",
-    letterboxd: row[iLetterboxd] || ""
+    letterboxd: row[iLetterboxd] || "",
+    notes: row[iNotes] || "",
   })).filter(d => d.title);
 }

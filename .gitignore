@@ -1,6 +1,7 @@
-# Personal data (keep local CSVs and covers private)
+# Personal data (keep local CSVs and covers private — except the public demo)
 data/
 !data/sample.csv
+!data/demo.csv
 
 # Claude Code local settings (personal — not shared project config)
 .claude
