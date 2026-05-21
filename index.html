@@ -438,20 +438,27 @@
     }
 
     /* ============ Corners ============ */
-    /* "made by sam" brand link — matches the position + typography of the
-       main madebysam.dev header (top-left, font-weight 500, slight negative
-       letter-spacing). Mobile drops back to bottom-left to avoid colliding
-       with the centred toolbar pill. */
+    /* "made by sam" brand link — literal copy of the main madebysam.dev
+       site-header values so the brand sits identically across both sites.
+       Main site: padding 1.5rem 2rem (24px / 32px), body font-size 16px,
+       line-height 1.6, explicit Apple/Segoe/Roboto stack (NOT system-ui),
+       font-weight 500, letter-spacing -0.02em. Mobile drops to bottom-left
+       to avoid colliding with the centred toolbar. */
     #byline {
       position: fixed;
-      top: 14px;
-      left: 16px;
+      top: 1.5rem;   /* --space-3 */
+      left: 2rem;    /* --space-4 */
       color: rgba(255, 255, 255, 0.85);
       text-decoration: none;
-      font: 500 15px/1 system-ui;
+      font-family:
+        -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+        Cantarell, 'Helvetica Neue', sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      font-weight: 500;
       letter-spacing: -0.02em;
-      /* Sits above the loading overlay (200) and modal backdrops (100) so
-         the brand mark stays visible through every page state. */
+      /* Above the loading overlay (200) and modal backdrops (100) so the
+         brand mark stays visible through every page state. */
       z-index: 250;
       text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
       transition: color 0.15s;
@@ -802,12 +809,12 @@
       .modal__panel { padding: 18px; }
       #btnLoadYours { bottom: 16px; padding: 10px 18px; font-size: 12px; }
       /* On narrow screens move the byline back to the bottom-left so it
-         doesn't overlap with the centred toolbar. */
+         doesn't overlap with the centred toolbar. Same typography, just
+         repositioned. */
       #byline {
         top: auto;
-        bottom: 50px;
+        bottom: 60px;
         left: 12px;
-        font-size: 12px;
       }
       #footer { bottom: 50px; }
     }
@@ -899,7 +906,7 @@
   <button id="btnLoadYours" type="button">Load your collection</button>
 
   <!-- Made-by attribution, bottom-left. -->
-  <a id="byline" href="https://madebysam.dev" target="_blank" rel="noopener">made by <em>sam</em></a>
+  <a id="byline" href="https://madebysam.dev">made by <em>sam</em></a>
 
   <!-- TMDB icon, bottom-right. Disclaimer lives in Credits modal. -->
   <footer id="footer">
@@ -973,7 +980,7 @@
         keep browsing the demo.
       </p>
       <p>
-        Built by <a href="https://madebysam.dev" target="_blank" rel="noopener">Sam</a>
+        Built by <a href="https://madebysam.dev">Sam</a>
         using <a href="https://threejs.org/" target="_blank" rel="noopener">Three.js</a>.
       </p>
       <p>
