@@ -438,16 +438,27 @@
     }
 
     /* ============ Corners ============ */
-    /* "made by sam" brand link — literal copy of the main madebysam.dev
-       site-header values so the brand sits identically across both sites.
-       Main site: padding 1.5rem 2rem (24px / 32px), body font-size 16px,
-       line-height 1.6, explicit Apple/Segoe/Roboto stack (NOT system-ui),
-       font-weight 500, letter-spacing -0.02em. Mobile drops to bottom-left
-       to avoid colliding with the centred toolbar. */
-    #byline {
+    /* "made by sam" brand link — literally mirrors the main madebysam.dev
+       site-header structure so the brand sits at the same pixel position.
+       Main site has a flex header with align-items: center containing the
+       brand + a 2rem-tall ThemeToggle. The toggle is taller than the brand
+       line-box, so flex centring shifts the brand down ~3.2px from the
+       padding-top. We replicate that exact centring by wrapping the byline
+       in a flex container with min-height = toggle size. Without the
+       wrapper the brand would render ~3px higher than on the main site. */
+    .byline-wrap {
       position: fixed;
-      top: 1.5rem;   /* --space-3 */
-      left: 2rem;    /* --space-4 */
+      top: 0;
+      left: 0;
+      display: flex;
+      align-items: center;
+      padding: 1.5rem 2rem;          /* --space-3 / --space-4 */
+      min-height: 2rem;              /* matches ThemeToggle size on main site */
+      box-sizing: content-box;
+      z-index: 250;
+      pointer-events: none;          /* link below restores pointer-events */
+    }
+    #byline {
       color: rgba(255, 255, 255, 0.85);
       text-decoration: none;
       font-family:
@@ -457,10 +468,8 @@
       line-height: 1.6;
       font-weight: 500;
       letter-spacing: -0.02em;
-      /* Above the loading overlay (200) and modal backdrops (100) so the
-         brand mark stays visible through every page state. */
-      z-index: 250;
       text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+      pointer-events: auto;
       transition: color 0.15s;
     }
     #byline:hover { color: white; }
@@ -809,12 +818,14 @@
       .modal__panel { padding: 18px; }
       #btnLoadYours { bottom: 16px; padding: 10px 18px; font-size: 12px; }
       /* On narrow screens move the byline back to the bottom-left so it
-         doesn't overlap with the centred toolbar. Same typography, just
-         repositioned. */
-      #byline {
+         doesn't overlap with the centred toolbar. Wrapper handles
+         positioning; the link inside keeps its typography. */
+      .byline-wrap {
         top: auto;
-        bottom: 60px;
-        left: 12px;
+        bottom: 48px;
+        left: 0;
+        padding: 0 12px;
+        min-height: 0;
       }
       #footer { bottom: 50px; }
     }
@@ -905,8 +916,12 @@
   <!-- Primary CTA — bottom-centre, standalone. -->
   <button id="btnLoadYours" type="button">Load your collection</button>
 
-  <!-- Made-by attribution, bottom-left. -->
-  <a id="byline" href="https://madebysam.dev">made by <em>sam</em></a>
+  <!-- Top-left brand link. Wrapper mirrors the main site's flex header so
+       the brand sits at the same y position (centred against a 2rem-tall
+       sibling rather than padded to its own line-box). -->
+  <div class="byline-wrap">
+    <a id="byline" href="https://madebysam.dev">made by <em>sam</em></a>
+  </div>
 
   <!-- TMDB icon, bottom-right. Disclaimer lives in Credits modal. -->
   <footer id="footer">
