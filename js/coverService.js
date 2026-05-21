@@ -24,15 +24,20 @@ export function createCoverService({ tmdbClient, localCoverRoot = "./data/covers
 
       // We won't check local existence yet (would require HEAD + CORS nuances),
       // but we store the paths so you can start dropping images in and wire it up later.
-      const posterUrl = await tmdbClient.getPosterURLFor(title, year, "w342");
+      const enr = await tmdbClient.getEnrichmentFor(title, year, "w342");
 
       out.push({
         ...r,
         cover: {
           slug,
-          posterUrl,     // TMDB fallback front
-          localFront,    // future override
-          localBack      // future override
+          posterUrl: enr?.posterUrl ?? null,
+          backdropUrl: enr?.backdropUrl ?? null,
+          voteAverage: enr?.voteAverage ?? null,
+          voteCount: enr?.voteCount ?? null,
+          overview: enr?.overview ?? null,        // TMDB synopsis paragraph
+          tmdbId: enr?.tmdbId ?? null,
+          localFront,
+          localBack
         }
       });
     }

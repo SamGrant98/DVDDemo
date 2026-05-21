@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>DVD Stack Prototype</title>
+  <title>dvd shelf — made by sam</title>
 
   <script type="importmap">
   {
@@ -14,57 +14,87 @@
   </script>
 
   <style>
-    html, body { margin: 0; height: 100%; overflow: hidden; background: #111114; }
-    #ui {
-      position: fixed; bottom: 12px; left: 12px;
-      padding: 8px 12px; border-radius: 10px;
-      background: rgba(0,0,0,0.4); color: white;
-      font: 12px/1.3 system-ui;
-      pointer-events: none;
-      max-width: 420px;
-      opacity: 0.85;
-    }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #111114; overscroll-behavior: none; }
+    canvas { touch-action: none; }
 
-    /* Filter panel — top-left, collapsible */
-    .filterpanel {
-      position: fixed; top: 12px; left: 12px;
-      z-index: 50;
-      font: 12px system-ui;
-      color: white;
-    }
-    .filterpanel__toggle {
-      background: rgba(0,0,0,0.5);
-      border: 1px solid rgba(255,255,255,0.1);
+    #ui { display: none; }
+    #hint { display: none; }
+
+    /* ============ Top Toolbar (browsing only — Sort + Filter) ============ */
+    .toolbar {
+      position: fixed;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: stretch;
+      padding: 4px;
+      background: rgba(0, 0, 0, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 999px;
-      padding: 6px 14px;
-      color: white;
-      cursor: pointer;
       backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 50;
+      max-width: calc(100vw - 24px);
+      /* overflow MUST stay visible so the Filter dropdown can escape below the
+         toolbar. Setting overflow-x:auto forces overflow-y to a non-visible
+         value (CSS spec) which clips the dropdown. */
+      overflow: visible;
+    }
+    .toolbar__group {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 0 6px;
+    }
+    .toolbar__group + .toolbar__group {
+      border-left: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .toolbar__btn {
+      background: transparent;
+      border: 0;
+      color: rgba(255, 255, 255, 0.65);
+      padding: 7px 12px;
+      border-radius: 999px;
+      font: 12px/1 system-ui;
+      cursor: pointer;
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      font: 12px system-ui;
+      transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
     }
-    .filterpanel__toggle:hover { background: rgba(0,0,0,0.7); }
-    .filterpanel__badge {
-      background: rgba(255,255,255,0.2);
+    .toolbar__btn:hover { color: white; background: rgba(255, 255, 255, 0.06); }
+    .toolbar__btn.is-active { background: rgba(255, 255, 255, 0.16); color: white; }
+    .toolbar__badge {
+      background: rgba(255, 255, 255, 0.25);
+      color: white;
       border-radius: 999px;
       padding: 1px 6px;
       font-size: 10px;
       font-weight: 700;
-      min-width: 8px;
+      min-width: 10px;
       text-align: center;
     }
+
+    .toolbar__filter-wrap { position: relative; display: flex; align-items: center; }
+
+    /* ============ Filter dropdown (anchored to Filter button) ============ */
     .filterpanel__body {
-      margin-top: 8px;
-      background: rgba(0,0,0,0.7);
-      border: 1px solid rgba(255,255,255,0.1);
+      position: absolute;
+      top: calc(100% + 8px);
+      left: -4px;
+      width: 280px;
+      background: rgba(0, 0, 0, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 12px;
       padding: 12px;
       backdrop-filter: blur(8px);
-      width: 280px;
       max-height: calc(100vh - 80px);
       overflow-y: auto;
+      z-index: 51;
+      color: white;
+      font: 12px system-ui;
     }
     .filterpanel__body[hidden] { display: none; }
     .filterpanel__search {
@@ -133,14 +163,123 @@
       font: 11px system-ui;
     }
     .filterpanel__clear:hover { background: rgba(255,255,255,0.06); }
+
+    /* ============ More menu (top-right) ============ */
+    .more-menu {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 50;
+    }
+    .more-menu__trigger {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: rgba(255, 255, 255, 0.85);
+      cursor: pointer;
+      font: 18px/1 system-ui;
+      letter-spacing: 0.1em;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(8px);
+      transition: background 0.15s;
+    }
+    .more-menu__trigger:hover { background: rgba(0, 0, 0, 0.75); color: white; }
+    .more-menu__body {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      width: 220px;
+      background: rgba(0, 0, 0, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 6px;
+      backdrop-filter: blur(8px);
+      color: white;
+      font: 13px system-ui;
+      opacity: 0;
+      transform: translateY(-4px) scale(0.97);
+      transform-origin: top right;
+      pointer-events: none;
+      transition: opacity 0.15s, transform 0.15s;
+    }
+    .more-menu__body.is-open {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+    .more-menu__section {
+      padding: 4px 0;
+    }
+    .more-menu__label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      opacity: 0.45;
+      padding: 6px 10px 4px;
+    }
+    .more-menu__item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      width: 100%;
+      background: transparent;
+      border: 0;
+      color: white;
+      text-align: left;
+      padding: 8px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font: 13px system-ui;
+    }
+    .more-menu__item:hover { background: rgba(255, 255, 255, 0.06); }
+    .more-menu__divider {
+      height: 1px;
+      background: rgba(255, 255, 255, 0.1);
+      margin: 4px 0;
+    }
+    .more-menu__switch {
+      position: relative;
+      display: inline-block;
+      width: 28px;
+      height: 14px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 999px;
+      transition: background 0.15s;
+      flex-shrink: 0;
+    }
+    .more-menu__switch::after {
+      content: "";
+      position: absolute;
+      top: 1px;
+      left: 1px;
+      width: 12px;
+      height: 12px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.18s;
+    }
+    .more-menu__item[aria-pressed="true"] .more-menu__switch {
+      background: rgba(120, 195, 140, 0.55);
+    }
+    .more-menu__item[aria-pressed="true"] .more-menu__switch::after {
+      transform: translateX(14px);
+    }
+
+    /* ============ Dev tuning panel (?dev=1) ============ */
     #controls {
-      position: fixed; top: 12px; right: 12px;
+      position: fixed; top: 60px; right: 60px;
       padding: 12px; border-radius: 14px;
       background: rgba(0,0,0,0.55); color: white;
       font: 12px/1.2 system-ui;
       width: 320px;
       user-select: none;
       backdrop-filter: blur(6px);
+      z-index: 45;
     }
     #controls .title { font-weight: 700; margin-bottom: 10px; }
     #controls .row { display: grid; grid-template-columns: 1fr 70px; gap: 10px; align-items: center; margin: 10px 0 6px; }
@@ -148,13 +287,19 @@
     #controls input[type="range"] { width: 100%; }
     #controls .val { text-align: right; opacity: 0.9; font-variant-numeric: tabular-nums; }
 
+    /* ============ Focused DVD meta panel ============ */
     #meta {
-      position: fixed; right: 12px; top: 360px; width: 320px;
-      padding: 12px; border-radius: 14px;
+      position: fixed; right: 12px; top: 50%;
+      transform: translateY(-50%);
+      width: 320px;
+      padding: 14px; border-radius: 14px;
       background: rgba(0,0,0,0.55); color: #fff;
-      font: 12px/1.35 system-ui;
+      font: 12px/1.4 system-ui;
       display: none;
-      backdrop-filter: blur(6px);
+      backdrop-filter: blur(8px);
+      z-index: 45;
+      max-height: calc(100vh - 24px);
+      overflow-y: auto;
     }
     #metaHeader {
       display:flex; justify-content:space-between; gap:10px; align-items:center;
@@ -165,7 +310,7 @@
       pointer-events: auto;
       cursor: pointer;
       border: 0;
-      border-radius: 10px;
+      border-radius: 8px;
       padding: 6px 10px;
       background: rgba(255,255,255,0.14);
       color: white;
@@ -173,10 +318,79 @@
     }
     #btnBack:hover { background: rgba(255,255,255,0.2); }
 
+    /* Rich meta-panel content */
+    #meta { overflow: hidden; } /* so the bleed-out thumbnail respects panel rounding */
+    .meta__thumb {
+      margin: 6px -14px 10px;
+      aspect-ratio: 16 / 9;
+      background: rgba(255,255,255,0.05);
+      overflow: hidden;
+    }
+    .meta__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .meta__title {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 6px;
+    }
+    .meta__year { font-weight: 400; opacity: 0.55; }
+    .meta__chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 10px; }
+    .meta__chip {
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      background: rgba(255,255,255,0.09);
+      border-radius: 4px;
+      padding: 2px 6px;
+    }
+    .meta__row { font-size: 12px; line-height: 1.5; margin-bottom: 4px; }
+    .meta__k {
+      display: inline-block;
+      min-width: 56px;
+      opacity: 0.5;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-right: 6px;
+    }
+    .meta__dim { opacity: 0.55; }
+    .meta__rating { margin: 6px 0; display: flex; align-items: center; gap: 8px; }
+    .meta__rating-stars {
+      letter-spacing: 0.08em;
+      color: #f7d35e;
+      font-size: 13px;
+    }
+    .meta__rating-num { opacity: 0.6; font-size: 11px; }
+    .meta__overview {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      font-size: 12px;
+      line-height: 1.55;
+      opacity: 0.85;
+    }
+    .meta__notes {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      font-size: 12px;
+      line-height: 1.45;
+      font-style: italic;
+    }
+    .meta__notes .meta__k { display: block; font-style: normal; margin-bottom: 2px; }
+    .meta__link { margin-top: 10px; }
+    .meta__link a {
+      color: #8ab4ff;
+      text-decoration: none;
+      font-size: 12px;
+      border-bottom: 1px dotted rgba(138, 180, 255, 0.4);
+    }
+    .meta__link a:hover { border-bottom-color: rgba(138, 180, 255, 0.95); }
+
     .meta__actions {
       display: flex;
       gap: 6px;
-      margin-top: 10px;
+      margin-top: 12px;
       padding-top: 10px;
       border-top: 1px solid rgba(255,255,255,0.08);
     }
@@ -199,22 +413,250 @@
     }
     .meta__action-delete:hover { background: rgba(255,80,80,0.25); }
 
-    #hint { display: none; } /* superseded by the filter panel + intrinsic UI affordances */
-
-    /* Stats pill — top-right counterpart to the Filter pill */
-    #statsToggle {
-      position: fixed; top: 12px; right: 12px;
-      background: rgba(0,0,0,0.5);
-      border: 1px solid rgba(255,255,255,0.1);
+    /* ============ Bottom-centre CTA ============ */
+    #btnLoadYours {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 24px;
+      border: 0;
       border-radius: 999px;
-      padding: 6px 14px;
+      background: white;
+      color: #18181c;
+      font: 500 13px system-ui;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+      z-index: 50;
+      transition: filter 0.15s, transform 0.15s, box-shadow 0.15s;
+    }
+    #btnLoadYours:hover {
+      filter: brightness(0.96);
+      transform: translateX(-50%) translateY(-1px);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    /* ============ Corners ============ */
+    /* "made by sam" brand link — matches the position + typography of the
+       main madebysam.dev header (top-left, font-weight 500, slight negative
+       letter-spacing). Mobile drops back to bottom-left to avoid colliding
+       with the centred toolbar pill. */
+    #byline {
+      position: fixed;
+      top: 14px;
+      left: 16px;
+      color: rgba(255, 255, 255, 0.85);
+      text-decoration: none;
+      font: 500 15px/1 system-ui;
+      letter-spacing: -0.02em;
+      z-index: 60;
+      text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+      transition: color 0.15s;
+    }
+    #byline:hover { color: white; }
+    #byline em { font-style: normal; }
+
+    #footer {
+      position: fixed; bottom: 12px; right: 12px;
+      pointer-events: none;
+      z-index: 40;
+    }
+    .footer__tmdb-link {
+      display: inline-block;
+      pointer-events: auto;
+      opacity: 0.78;
+      transition: opacity 0.15s;
+    }
+    .footer__tmdb-link:hover { opacity: 1; }
+    .footer__tmdb-icon {
+      height: 28px;
+      width: auto;
+      display: block;
+    }
+
+    /* ============ Modals (shared) ============ */
+    .modal {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    .modal[hidden] { display: none; }
+    .modal__panel {
+      background: #18181c;
+      color: white;
+      padding: 24px;
+      border-radius: 16px;
+      width: calc(100% - 32px);
+      max-width: 480px;
+      max-height: calc(100% - 32px);
+      overflow-y: auto;
+      font: 14px/1.5 system-ui;
+      position: relative;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .modal__panel h2 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+    .modal__close {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: transparent;
+      border: 0;
+      color: rgba(255,255,255,0.7);
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+      width: 32px;
+      height: 32px;
+    }
+    .modal__close:hover { color: white; }
+    .muted {
+      opacity: 0.65;
+      margin: 0 0 16px;
+      font-size: 12px;
+    }
+    .dropzone {
+      border: 2px dashed rgba(255,255,255,0.2);
+      border-radius: 12px;
+      padding: 32px;
+      text-align: center;
+      margin-bottom: 12px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .dropzone--over {
+      border-color: rgba(255,255,255,0.5);
+      background: rgba(255,255,255,0.05);
+    }
+    .dropzone p { margin: 0; opacity: 0.85; }
+    .dropzone .or { margin: 8px 0; opacity: 0.4; font-size: 11px; }
+    .file-label {
+      display: inline-block;
+      padding: 8px 14px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.12);
       color: white;
       cursor: pointer;
-      backdrop-filter: blur(8px);
-      font: 12px system-ui;
-      z-index: 50;
+      font: 13px system-ui;
+      border: 0;
     }
-    #statsToggle:hover { background: rgba(0,0,0,0.7); }
+    .file-label:hover { background: rgba(255,255,255,0.2); }
+    .modal__links {
+      font-size: 12px;
+      opacity: 0.75;
+      margin: 8px 0 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 8px;
+    }
+    .modal__links a {
+      color: #8ab4ff;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .modal__links a:hover { text-decoration: underline; }
+    #uploadStatus {
+      margin-top: 12px;
+      font-size: 12px;
+      min-height: 18px;
+      opacity: 0.9;
+    }
+
+    .form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .field > span { font-size: 11px; opacity: 0.7; }
+    .field > span em { color: #ff8a8a; font-style: normal; }
+    .field input,
+    .field textarea {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      color: white;
+      padding: 8px 10px;
+      font: 13px system-ui;
+      width: 100%;
+      box-sizing: border-box;
+      resize: vertical;
+    }
+    .field input:focus,
+    .field textarea:focus {
+      outline: 0;
+      border-color: rgba(255,255,255,0.3);
+      background: rgba(255,255,255,0.08);
+    }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font: 13px system-ui;
+    }
+    .btn--ghost {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.12);
+      color: white;
+    }
+    .btn--ghost:hover { background: rgba(255,255,255,0.06); }
+    .btn--primary {
+      background: rgba(255,255,255,0.92);
+      color: #18181c;
+      border: 0;
+    }
+    .btn--primary:hover { background: white; }
+
+    /* Star rating input (editor form) */
+    .star-input {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      height: 36px;
+    }
+    .star-input__star {
+      background: transparent;
+      border: 0;
+      color: rgba(255, 255, 255, 0.22);
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 4px 2px;
+      transition: color 0.1s, transform 0.1s;
+    }
+    .star-input__star:hover { transform: scale(1.18); }
+    .star-input__star.is-full { color: #f7d35e; }
+    .star-input__star.is-half {
+      background: linear-gradient(to right, #f7d35e 50%, rgba(255,255,255,0.22) 50%);
+      -webkit-background-clip: text;
+              background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: transparent;
+    }
+    .star-input__clear {
+      background: transparent;
+      border: 0;
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 15px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 4px 8px;
+      margin-left: 6px;
+    }
+    .star-input__clear:hover { color: rgba(255, 255, 255, 0.9); }
 
     /* Stats modal bars */
     .stats__section { margin-top: 16px; }
@@ -257,258 +699,188 @@
       font-variant-numeric: tabular-nums;
     }
 
-    /* Sort bar — top-centre, segmented pill control */
-    .sortbar {
-      position: fixed;
-      top: 12px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 2px;
-      padding: 4px;
-      background: rgba(0,0,0,0.5);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 999px;
-      backdrop-filter: blur(8px);
-      z-index: 40;
+    /* Credits modal */
+    .credits p {
+      margin: 0 0 12px;
+      line-height: 1.55;
+      opacity: 0.9;
     }
-    .sortbar__btn {
-      background: transparent;
-      border: 0;
-      color: rgba(255,255,255,0.6);
-      padding: 6px 14px;
-      border-radius: 999px;
-      font: 12px system-ui;
-      cursor: pointer;
-      transition: background 0.15s, color 0.15s;
+    .credits a {
+      color: #8ab4ff;
+      text-decoration: none;
+      border-bottom: 1px dotted rgba(138, 180, 255, 0.4);
     }
-    .sortbar__btn:hover { color: white; }
-    .sortbar__btn--active {
-      background: rgba(255,255,255,0.15);
-      color: white;
+    .credits a:hover { border-bottom-color: rgba(138, 180, 255, 1); }
+    .credits__small {
+      font-size: 11px;
+      opacity: 0.55;
+      line-height: 1.5;
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
     }
 
-    /* "Load your collection" CTA — bottom-centre, the primary public-tool entry point */
-    #btnLoadYours {
-      position: fixed;
-      bottom: 12px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 10px 18px;
-      border: 1px solid rgba(255,255,255,0.15);
-      border-radius: 999px;
-      background: rgba(255,255,255,0.1);
-      color: white;
-      font: 13px system-ui;
-      cursor: pointer;
-      backdrop-filter: blur(8px);
-      z-index: 50;
-    }
-    #btnLoadYours:hover { background: rgba(255,255,255,0.18); }
-
-    /* Modals (shared styling for upload + editor) */
-    .modal {
+    /* ============ Loading & empty overlays ============ */
+    #loadingOverlay {
       position: fixed; inset: 0;
-      background: rgba(0,0,0,0.7);
+      background: #111114;
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 100;
+      z-index: 200;
+      transition: opacity 0.45s ease-out;
     }
-    .modal[hidden] { display: none; }
-    .modal__panel {
-      background: #18181c;
-      color: white;
-      padding: 24px;
-      border-radius: 16px;
-      width: calc(100% - 32px);
-      max-width: 480px;
-      max-height: calc(100% - 32px);
-      overflow-y: auto;
-      font: 14px/1.4 system-ui;
-      position: relative;
-      border: 1px solid rgba(255,255,255,0.1);
+    #loadingOverlay.is-hidden {
+      opacity: 0;
+      pointer-events: none;
     }
-    .modal__panel h2 {
-      margin: 0 0 8px;
-      font-size: 18px;
-    }
-    .modal__close {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: transparent;
-      border: 0;
-      color: rgba(255,255,255,0.7);
-      font-size: 22px;
-      line-height: 1;
-      cursor: pointer;
-      width: 32px;
-      height: 32px;
-    }
-    .modal__close:hover { color: white; }
-    .muted {
-      opacity: 0.65;
-      margin: 0 0 16px;
-      font-size: 12px;
-    }
-    .dropzone {
-      border: 2px dashed rgba(255,255,255,0.2);
-      border-radius: 12px;
-      padding: 32px;
+    .loading__panel {
       text-align: center;
-      margin-bottom: 12px;
-      transition: border-color 0.15s, background 0.15s;
-    }
-    .dropzone--over {
-      border-color: rgba(255,255,255,0.5);
-      background: rgba(255,255,255,0.05);
-    }
-    .dropzone p {
-      margin: 0;
-      opacity: 0.85;
-    }
-    .dropzone .or {
-      margin: 8px 0;
-      opacity: 0.4;
-      font-size: 11px;
-    }
-    .file-label {
-      display: inline-block;
-      padding: 8px 14px;
-      border-radius: 8px;
-      background: rgba(255,255,255,0.12);
       color: white;
-      cursor: pointer;
-      font: 13px system-ui;
-      border: 0;
+      font: 14px system-ui;
     }
-    .file-label:hover { background: rgba(255,255,255,0.2); }
-    .modal__links {
-      font-size: 12px;
-      opacity: 0.75;
-      margin: 8px 0 0;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px 8px;
-    }
-    .modal__links a {
-      color: #8ab4ff;
-      text-decoration: none;
-      cursor: pointer;
-    }
-    .modal__links a:hover { text-decoration: underline; }
-    #uploadStatus {
-      margin-top: 12px;
-      font-size: 12px;
-      min-height: 18px;
+    .loading__title {
+      font-size: 26px;
+      font-weight: 300;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
       opacity: 0.9;
+      margin-bottom: 14px;
+    }
+    .loading__status {
+      opacity: 0.55;
+      font-size: 12px;
+      letter-spacing: 0.02em;
     }
 
-    /* Editor form */
-    .form {
+    #emptyState {
+      position: fixed; inset: 0;
       display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-top: 12px;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 30;
     }
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .field > span {
-      font-size: 11px;
-      opacity: 0.7;
-    }
-    .field > span em {
-      color: #ff8a8a;
-      font-style: normal;
-    }
-    .field input,
-    .field textarea {
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 8px;
+    #emptyState[hidden] { display: none; }
+    .empty__panel {
+      background: rgba(0,0,0,0.75);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 20px 28px;
       color: white;
-      padding: 8px 10px;
-      font: 13px system-ui;
-      width: 100%;
-      box-sizing: border-box;
-      resize: vertical;
+      text-align: center;
+      font: 13px/1.4 system-ui;
+      pointer-events: auto;
+      backdrop-filter: blur(8px);
+      max-width: calc(100% - 32px);
     }
-    .field input:focus,
-    .field textarea:focus {
-      outline: 0;
-      border-color: rgba(255,255,255,0.3);
-      background: rgba(255,255,255,0.08);
-    }
-    .field-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-    .form-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-      margin-top: 8px;
-    }
-    .btn {
-      padding: 8px 14px;
-      border-radius: 8px;
-      cursor: pointer;
-      font: 13px system-ui;
-    }
-    .btn--ghost {
-      background: transparent;
-      border: 1px solid rgba(255,255,255,0.12);
-      color: white;
-    }
-    .btn--ghost:hover { background: rgba(255,255,255,0.06); }
-    .btn--primary {
+    .empty__panel p { margin: 0 0 12px; opacity: 0.85; }
+    #emptyClear {
       background: rgba(255,255,255,0.92);
       color: #18181c;
       border: 0;
+      border-radius: 8px;
+      padding: 6px 14px;
+      font: 13px system-ui;
+      cursor: pointer;
     }
-    .btn--primary:hover { background: white; }
+    #emptyClear:hover { background: white; }
+
+    @media (max-width: 720px) {
+      .toolbar { max-width: calc(100vw - 16px); font-size: 11px; }
+      .toolbar__btn { padding: 6px 10px; }
+      #meta {
+        right: 12px; left: 12px;
+        top: auto; bottom: 90px;
+        transform: none;
+        width: auto;
+        max-height: 45vh;
+      }
+      .filterpanel__body { width: min(280px, calc(100vw - 24px)); }
+      .modal__panel { padding: 18px; }
+      #btnLoadYours { bottom: 16px; padding: 10px 18px; font-size: 12px; }
+      /* On narrow screens move the byline back to the bottom-left so it
+         doesn't overlap with the centred toolbar. */
+      #byline {
+        top: auto;
+        bottom: 50px;
+        left: 12px;
+        font-size: 12px;
+      }
+      #footer { bottom: 50px; }
+    }
   </style>
 </head>
 <body>
-  <div id="ui">Drag / wheel to scroll • Click a DVD to focus • Click again to flip</div>
+  <div id="ui"></div>
+  <div id="hint"></div>
 
-  <div id="filterPanel" class="filterpanel">
-    <button id="filterToggle" class="filterpanel__toggle" type="button" aria-expanded="false">
-      <span>Filter</span>
-      <span id="filterBadge" class="filterpanel__badge" hidden>0</span>
-    </button>
-    <div id="filterBody" class="filterpanel__body" hidden>
-      <input id="filterSearch" class="filterpanel__search" type="search" placeholder="Search title, director, cast…" />
+  <div id="controls" hidden></div>
 
-      <div class="filterpanel__group">
-        <div class="filterpanel__label">Genre</div>
-        <div id="filterGenres" class="chips"></div>
+  <!-- Top toolbar — browsing controls only (Sort + Filter). -->
+  <div id="topToolbar" class="toolbar" role="toolbar" aria-label="Browse controls">
+    <div class="toolbar__group toolbar__filter-wrap">
+      <button id="filterToggle" class="toolbar__btn" type="button" aria-expanded="false">
+        <span>Filter</span>
+        <span id="filterBadge" class="toolbar__badge" hidden>0</span>
+      </button>
+      <div id="filterBody" class="filterpanel__body" hidden>
+        <input id="filterSearch" class="filterpanel__search" type="search" placeholder="Search title, director, cast…" />
+        <div class="filterpanel__group">
+          <div class="filterpanel__label">Genre</div>
+          <div id="filterGenres" class="chips"></div>
+        </div>
+        <div class="filterpanel__group">
+          <div class="filterpanel__label">Decade</div>
+          <div id="filterDecades" class="chips"></div>
+        </div>
+        <div class="filterpanel__group">
+          <div class="filterpanel__label">Minimum rating</div>
+          <div id="filterRatings" class="chips"></div>
+        </div>
+        <div class="filterpanel__footer">
+          <span id="filterCount">—</span>
+          <button id="filterClear" class="filterpanel__clear" type="button">Clear all</button>
+        </div>
       </div>
+    </div>
 
-      <div class="filterpanel__group">
-        <div class="filterpanel__label">Decade</div>
-        <div id="filterDecades" class="chips"></div>
+    <div class="toolbar__group" id="sortBar" role="tablist" aria-label="Sort collection by">
+      <button class="toolbar__btn is-active" data-sort="default" type="button">Default</button>
+      <button class="toolbar__btn" data-sort="title" type="button">Title</button>
+      <button class="toolbar__btn" data-sort="year" type="button">Year</button>
+      <button class="toolbar__btn" data-sort="rating" type="button">Rating</button>
+    </div>
+  </div>
+
+  <!-- Top-right: more menu (settings + info). -->
+  <div class="more-menu">
+    <button id="moreToggle" class="more-menu__trigger" type="button" aria-haspopup="true" aria-expanded="false" aria-label="More options">⋯</button>
+    <div id="moreBody" class="more-menu__body" role="menu">
+      <div class="more-menu__section">
+        <div class="more-menu__label">Settings</div>
+        <button id="audioToggle" class="more-menu__item" type="button" role="menuitemcheckbox" aria-pressed="false">
+          <span>Sound</span>
+          <span class="more-menu__switch" aria-hidden="true"></span>
+        </button>
+        <button id="ambientToggle" class="more-menu__item" type="button" role="menuitemcheckbox" aria-pressed="false">
+          <span>Ambient drone</span>
+          <span class="more-menu__switch" aria-hidden="true"></span>
+        </button>
+        <button id="reducedMotionToggle" class="more-menu__item" type="button" role="menuitemcheckbox" aria-pressed="false">
+          <span>Reduced motion</span>
+          <span class="more-menu__switch" aria-hidden="true"></span>
+        </button>
       </div>
-
-      <div class="filterpanel__group">
-        <div class="filterpanel__label">Minimum rating</div>
-        <div id="filterRatings" class="chips"></div>
-      </div>
-
-      <div class="filterpanel__footer">
-        <span id="filterCount">—</span>
-        <button id="filterClear" class="filterpanel__clear" type="button">Clear all</button>
+      <div class="more-menu__divider"></div>
+      <div class="more-menu__section">
+        <button id="statsToggle" class="more-menu__item" type="button" role="menuitem">Stats</button>
+        <button id="creditsToggle" class="more-menu__item" type="button" role="menuitem">Credits</button>
       </div>
     </div>
   </div>
 
-  <div id="controls" hidden></div>
-
+  <!-- Focused DVD meta panel. -->
   <div id="meta">
     <div id="metaHeader">
       <div class="h">DVD Details</div>
@@ -521,16 +893,22 @@
     </div>
   </div>
 
-  <button id="statsToggle" type="button">Stats</button>
+  <!-- Primary CTA — bottom-centre, standalone. -->
+  <button id="btnLoadYours" type="button">Load your collection</button>
 
-  <div id="sortBar" class="sortbar" role="tablist" aria-label="Sort collection by">
-    <button class="sortbar__btn sortbar__btn--active" data-sort="default">Default</button>
-    <button class="sortbar__btn" data-sort="title">Title</button>
-    <button class="sortbar__btn" data-sort="year">Year</button>
-    <button class="sortbar__btn" data-sort="rating">Rating</button>
-  </div>
+  <!-- Made-by attribution, bottom-left. -->
+  <a id="byline" href="https://madebysam.dev" target="_blank" rel="noopener">made by <em>sam</em></a>
 
-  <button id="btnLoadYours">Load your collection</button>
+  <!-- TMDB icon, bottom-right. Disclaimer lives in Credits modal. -->
+  <footer id="footer">
+    <a href="https://www.themoviedb.org/" target="_blank" rel="noopener" class="footer__tmdb-link"
+       title="Movie data from TMDB — see Credits for attribution"
+       aria-label="The Movie Database">
+      <img src="./assets/tmdb-icon.svg" alt="TMDB" class="footer__tmdb-icon" />
+    </a>
+  </footer>
+
+  <!-- ============ Modals ============ -->
 
   <div id="uploadModal" class="modal" hidden>
     <div class="modal__panel">
@@ -584,6 +962,29 @@
     </div>
   </div>
 
+  <div id="creditsModal" class="modal" hidden>
+    <div class="modal__panel credits">
+      <button id="creditsClose" class="modal__close" aria-label="Close">&times;</button>
+      <h2>Credits</h2>
+      <p>
+        A 3D physical media collection visualiser. Drop in your own CSV — or
+        keep browsing the demo.
+      </p>
+      <p>
+        Built by <a href="https://madebysam.dev" target="_blank" rel="noopener">Sam</a>
+        using <a href="https://threejs.org/" target="_blank" rel="noopener">Three.js</a>.
+      </p>
+      <p>
+        Movie data and images from
+        <a href="https://www.themoviedb.org/" target="_blank" rel="noopener">TMDB</a>.
+      </p>
+      <div class="credits__small">
+        This product uses TMDB and the TMDB APIs but is not endorsed, certified,
+        or otherwise approved by TMDB.
+      </div>
+    </div>
+  </div>
+
   <div id="editorModal" class="modal" hidden>
     <div class="modal__panel">
       <button id="editorClose" class="modal__close" aria-label="Close">&times;</button>
@@ -599,10 +1000,18 @@
             <span>Year</span>
             <input name="year" type="number" min="1880" max="2099" step="1" />
           </label>
-          <label class="field">
-            <span>Rating (out of 5)</span>
-            <input name="rating" type="number" min="0" max="5" step="0.5" />
-          </label>
+          <div class="field">
+            <span>Your rating</span>
+            <div class="star-input" id="ratingStarInput" role="radiogroup" aria-label="Your rating">
+              <button type="button" class="star-input__star" data-value="1" aria-label="1 star">★</button>
+              <button type="button" class="star-input__star" data-value="2" aria-label="2 stars">★</button>
+              <button type="button" class="star-input__star" data-value="3" aria-label="3 stars">★</button>
+              <button type="button" class="star-input__star" data-value="4" aria-label="4 stars">★</button>
+              <button type="button" class="star-input__star" data-value="5" aria-label="5 stars">★</button>
+              <button type="button" class="star-input__clear" aria-label="Clear rating">×</button>
+            </div>
+            <input type="hidden" name="rating" />
+          </div>
         </div>
         <label class="field">
           <span>Director</span>
@@ -630,6 +1039,22 @@
           <button type="submit" class="btn btn--primary">Save</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- ============ Overlays ============ -->
+
+  <div id="loadingOverlay">
+    <div class="loading__panel">
+      <div class="loading__title">DVD Shelf</div>
+      <div id="loadingStatus" class="loading__status">Loading…</div>
+    </div>
+  </div>
+
+  <div id="emptyState" hidden>
+    <div class="empty__panel">
+      <p>No films match your filters.</p>
+      <button id="emptyClear" type="button">Clear filters</button>
     </div>
   </div>
 

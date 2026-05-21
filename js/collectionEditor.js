@@ -19,6 +19,7 @@ export function mountEditor({
   addButton,
   editButton,
   deleteButton,
+  starInput,
   getCurrentRows,
   getFocusedRow,
 }) {
@@ -36,6 +37,7 @@ export function mountEditor({
     formModal.hidden = true;
     editingId = null;
     formEl.reset();
+    setStarUI(0);
   }
 
   function populate(row) {
@@ -47,6 +49,52 @@ export function mountEditor({
     formEl.elements.rating.value = row.rating || "";
     formEl.elements.letterboxd.value = row.letterboxd || "";
     formEl.elements.notes.value = row.notes || "";
+    setStarUI(row.rating || 0);
+  }
+
+  // ----- Star rating widget -----
+  // Clicking a star sets the rating to that whole number; clicking the same
+  // star again clears to 0. Half-star values that exist in the data (e.g. 3.5
+  // from earlier entries) are rendered as half-filled stars but a fresh click
+  // commits to a whole number. The hidden input named "rating" is the source
+  // of truth that FormData reads on submit.
+  function setStarUI(value) {
+    if (!starInput) return;
+    const v = Number(value) || 0;
+    starInput.querySelectorAll(".star-input__star").forEach((s) => {
+      const sv = Number(s.dataset.value);
+      s.classList.remove("is-full", "is-half");
+      if (sv <= v) s.classList.add("is-full");
+      else if (sv - 0.5 <= v) s.classList.add("is-half");
+    });
+  }
+
+  if (starInput) {
+    starInput.addEventListener("click", (e) => {
+      const clear = e.target.closest(".star-input__clear");
+      const star  = e.target.closest(".star-input__star");
+      if (clear) {
+        formEl.elements.rating.value = "";
+        setStarUI(0);
+        return;
+      }
+      if (star) {
+        const v = Number(star.dataset.value);
+        const current = Number(formEl.elements.rating.value) || 0;
+        const next = (current === v) ? 0 : v;
+        formEl.elements.rating.value = next || "";
+        setStarUI(next);
+      }
+    });
+    // Hover preview — light up stars up to the hovered one, restore on leave.
+    starInput.addEventListener("mouseover", (e) => {
+      const star = e.target.closest(".star-input__star");
+      if (!star) return;
+      setStarUI(Number(star.dataset.value));
+    });
+    starInput.addEventListener("mouseleave", () => {
+      setStarUI(Number(formEl.elements.rating.value) || 0);
+    });
   }
 
   formCloseButton.addEventListener("click", close);

@@ -4,7 +4,10 @@
 // so return visits don't re-hammer the proxy.
 
 const PROXY = "/api/tmdb";
-const LS_CFG_KEY = "tmdb_cfg_v2";
+// v3: also stores backdrop_sizes (added when we started rendering film
+// backdrops behind the focused DVD). Search cache stays at v2 since the
+// TMDB search response shape didn't change.
+const LS_CFG_KEY = "tmdb_cfg_v3";
 const LS_CACHE_KEY = "tmdb_search_cache_v2";
 
 function readJSON(key, fallback) {
@@ -57,6 +60,7 @@ export function createTMDBClient({ language = "en-GB" } = {}) {
       _ts: now,
       secure_base_url: data.images.secure_base_url,
       poster_sizes: data.images.poster_sizes,
+      backdrop_sizes: data.images.backdrop_sizes,
     };
     writeJSON(LS_CFG_KEY, cfg);
     return cfg;
@@ -89,16 +93,36 @@ export function createTMDBClient({ language = "en-GB" } = {}) {
     return best;
   }
 
-  async function getPosterURLFor(title, year, preferredSize = "w342") {
+  async function getEnrichmentFor(title, year, preferredSize = "w342") {
     const conf = await getConfig();
     const hit = await searchMovie(title, year);
-    if (!hit || !hit.poster_path) return null;
+    if (!hit) return null;
 
-    const size = pickPosterSize(conf.poster_sizes, preferredSize);
-    return `${conf.secure_base_url}${size}${hit.poster_path}`;
+    const posterSize = pickPosterSize(conf.poster_sizes, preferredSize);
+    const posterUrl = hit.poster_path
+      ? `${conf.secure_base_url}${posterSize}${hit.poster_path}`
+      : null;
+
+    // Backdrop is the wide cinematic still TMDB exposes per film. Used as a
+    // dim background layer when a DVD is focused.
+    const backdropSize = pickPosterSize(conf.backdrop_sizes, "w780");
+    const backdropUrl = hit.backdrop_path
+      ? `${conf.secure_base_url}${backdropSize}${hit.backdrop_path}`
+      : null;
+
+    return {
+      posterUrl,
+      backdropUrl,
+      voteAverage: typeof hit.vote_average === "number" ? hit.vote_average : null,
+      voteCount: typeof hit.vote_count === "number" ? hit.vote_count : null,
+      overview: typeof hit.overview === "string" && hit.overview.trim().length
+        ? hit.overview.trim()
+        : null,
+      tmdbId: hit.id ?? null,
+    };
   }
 
   return {
-    getPosterURLFor,
+    getEnrichmentFor,
   };
 }

@@ -177,53 +177,124 @@ export function createDVDStack(scene) {
     return `rgb(${r},${g},${b})`;
   }
 
+  // Greedy word-wrap. Splits `text` into lines that each measure within
+  // maxWidth using the canvas's current font, capped at maxLines (any
+  // overflow gets an ellipsis on the final line).
+  function wrapText(ctx, text, maxWidth, maxLines = Infinity) {
+    const words = String(text).split(/\s+/).filter(Boolean);
+    if (!words.length) return [];
+
+    const lines = [];
+    let current = "";
+    let i = 0;
+    for (; i < words.length; i++) {
+      const word = words[i];
+      const test = current ? `${current} ${word}` : word;
+      if (ctx.measureText(test).width > maxWidth && current) {
+        lines.push(current);
+        if (lines.length >= maxLines) break;
+        current = word;
+      } else {
+        current = test;
+      }
+    }
+    if (current && lines.length < maxLines) {
+      lines.push(current);
+      i++;
+    }
+
+    if (lines.length >= maxLines && i < words.length) {
+      let last = lines[lines.length - 1];
+      while (ctx.measureText(last + "…").width > maxWidth && last.length > 1) {
+        last = last.slice(0, -1);
+      }
+      lines[lines.length - 1] = last.trim() + "…";
+    }
+    return lines;
+  }
+
   // --- Spine title texture ---
-  function makeSpineTexture(title, tintColor) {
+  // 8:1 aspect canvas — closer match to the actual visible face aspects
+  // (±X is 7.25:1, ±Z is 10:1) so the text doesn't get distorted. Auto-fits
+  // the font down to a minimum size before truncating with an ellipsis as a
+  // last resort. Year sits to the right in dimmer text.
+  function makeSpineTexture(title, year, tintColor) {
     const c = document.createElement("canvas");
-    c.width = 512;
+    c.width = 1024;
     c.height = 128;
     const ctx = c.getContext("2d");
 
+    // Background tint
     ctx.fillStyle = colorToCss(tintColor);
     ctx.fillRect(0, 0, c.width, c.height);
 
-    ctx.fillStyle = "rgba(0,0,0,0.25)";
-    ctx.fillRect(0, 0, c.width, 10);
-    ctx.fillRect(0, c.height - 10, c.width, 10);
+    // Subtle case-wrap bands top and bottom
+    ctx.fillStyle = "rgba(0,0,0,0.28)";
+    ctx.fillRect(0, 0, c.width, 8);
+    ctx.fillRect(0, c.height - 8, c.width, 8);
 
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 44px system-ui";
+    const text = String(title || "Untitled").trim();
+    const yearText = year ? String(year) : "";
+
+    const FONT = "Georgia, 'Times New Roman', serif";
+    const padding = 28;
+    const titleBudget = c.width - padding * 2 - (yearText ? 120 : 0);
+
+    const TARGET_SIZE = 78;
+    const MIN_SIZE = 32;
+
+    let fontSize = TARGET_SIZE;
+    let displayed = text;
+    ctx.font = `600 ${fontSize}px ${FONT}`;
     ctx.textBaseline = "middle";
 
-    const text = (title || "Untitled").trim();
-    const maxChars = 18;
-    const t = text.length > maxChars ? text.slice(0, maxChars - 1) + "…" : text;
+    // Shrink the font for long titles down to MIN_SIZE…
+    while (ctx.measureText(displayed).width > titleBudget && fontSize > MIN_SIZE) {
+      fontSize -= 2;
+      ctx.font = `600 ${fontSize}px ${FONT}`;
+    }
+    // …and truncate with an ellipsis only if still too long at min size.
+    if (ctx.measureText(displayed).width > titleBudget) {
+      while (ctx.measureText(displayed + "…").width > titleBudget && displayed.length > 1) {
+        displayed = displayed.slice(0, -1);
+      }
+      displayed = displayed.trim() + "…";
+    }
 
-    ctx.fillText(t, 18, c.height / 2);
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "left";
+    ctx.fillText(displayed, padding, c.height / 2);
+
+    if (yearText) {
+      ctx.font = `400 ${Math.round(fontSize * 0.5)}px ${FONT}`;
+      ctx.fillStyle = "rgba(255,255,255,0.6)";
+      ctx.textAlign = "right";
+      ctx.fillText(yearText, c.width - padding, c.height / 2);
+    }
 
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 4;
-    tex.wrapS = THREE.ClampToEdgeWrapping; 
+    tex.wrapS = THREE.ClampToEdgeWrapping;
     tex.wrapT = THREE.ClampToEdgeWrapping;
     tex.minFilter = THREE.LinearFilter;
-
-    // Rotate so it reads nicely along the side UVs
     tex.center.set(0.5, 0.5);
-    // tex.rotation = Math.PI / 2;
-
     return tex;
   }
 
   // --- Back metadata texture (tinted background) ---
+  // Mirrors the spine treatment: Georgia serif, auto-fit title (shrinks
+  // before truncating), every body field word-wraps so long director /
+  // starring lists don't overflow off the case.
   function makeBackMetaTexture(data, tintColor) {
     const c = document.createElement("canvas");
     c.width = 512;
     c.height = 768;
-
     const ctx = c.getContext("2d");
 
-    const bg = tintColor ? tintColor.clone().multiplyScalar(0.45) : new THREE.Color(0.08, 0.08, 0.08);
+    const bg = tintColor
+      ? tintColor.clone().multiplyScalar(0.45)
+      : new THREE.Color(0.08, 0.08, 0.08);
     ctx.fillStyle = colorToCss(bg);
     ctx.fillRect(0, 0, c.width, c.height);
 
@@ -233,33 +304,81 @@ export function createDVDStack(scene) {
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, c.width, c.height);
 
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 34px system-ui";
+    const FONT = "Georgia, 'Times New Roman', serif";
+    const padding = 28;
+    const maxWidth = c.width - padding * 2;
     ctx.textBaseline = "top";
-    ctx.fillText(data.title || "Untitled", 24, 24);
 
-    ctx.font = "22px system-ui";
-    let y = 84;
+    // ---- Title (auto-fit, wrap to 2 lines max) ----
+    const TITLE_MAX = 40;
+    const TITLE_MIN = 24;
+    let titleSize = TITLE_MAX;
+    const titleText = String(data.title || "Untitled").trim();
+    ctx.font = `700 ${titleSize}px ${FONT}`;
+    while (ctx.measureText(titleText).width > maxWidth && titleSize > TITLE_MIN) {
+      titleSize -= 2;
+      ctx.font = `700 ${titleSize}px ${FONT}`;
+    }
+    ctx.fillStyle = "#ffffff";
+    const titleLines = wrapText(ctx, titleText, maxWidth, 2);
+    let y = 30;
+    for (const ln of titleLines) {
+      ctx.fillText(ln, padding, y);
+      y += Math.round(titleSize * 1.1);
+    }
+    y += 18;
 
-    function line(label, value) {
+    // ---- Body fields ----
+    function field(label, value, { maxLines = 3 } = {}) {
       if (!value) return;
-      ctx.fillStyle = "rgba(255,255,255,0.7)";
-      ctx.fillText(label, 24, y);
-      y += 26;
+      ctx.fillStyle = "rgba(255,255,255,0.55)";
+      ctx.font = `400 13px ${FONT}`;
+      ctx.fillText(String(label).toUpperCase(), padding, y);
+      y += 18;
       ctx.fillStyle = "rgba(255,255,255,0.95)";
-      ctx.fillText(value, 24, y);
-      y += 46;
+      ctx.font = `400 20px ${FONT}`;
+      const lines = wrapText(ctx, String(value), maxWidth, maxLines);
+      for (const ln of lines) {
+        ctx.fillText(ln, padding, y);
+        y += 24;
+      }
+      y += 10;
     }
 
-    line("Year", data.year);
-    line("Director", data.director);
-    line("Genre", data.genre);
-    line("Rating", data.rating ? `${data.rating} / 5` : "");
+    field("Year", data.year);
+    field("Director", data.director, { maxLines: 2 });
+    if (data.starring) field("Starring", data.starring, { maxLines: 2 });
+    field("Genre", data.genre, { maxLines: 2 });
+    field("Your rating", data.rating ? `${data.rating} / 5` : "");
+    field("TMDB", (typeof data.cover?.voteAverage === "number")
+      ? `${data.cover.voteAverage.toFixed(1)} / 10`
+      : "");
+
+    // ---- Notes (italic, fills remaining space above footer) ----
+    if (data.notes) {
+      y += 6;
+      ctx.fillStyle = "rgba(255,255,255,0.5)";
+      ctx.font = `400 13px ${FONT}`;
+      ctx.fillText("NOTES", padding, y);
+      y += 22;
+
+      ctx.fillStyle = "rgba(255,255,255,0.95)";
+      ctx.font = `italic 19px ${FONT}`;
+      const footerY = c.height - 60;
+      const lineHeight = 24;
+      const maxLines = Math.max(0, Math.floor((footerY - y) / lineHeight));
+      const notesLines = wrapText(ctx, data.notes, maxWidth, maxLines);
+      for (const ln of notesLines) {
+        if (y + lineHeight > footerY) break;
+        ctx.fillText(ln, padding, y);
+        y += lineHeight;
+      }
+    }
 
     if (data.letterboxd) {
       ctx.fillStyle = "rgba(255,255,255,0.6)";
-      ctx.font = "18px system-ui";
-      ctx.fillText("Letterboxd link in side panel", 24, c.height - 42);
+      ctx.font = `400 15px ${FONT}`;
+      ctx.fillText("Letterboxd link in side panel", padding, c.height - 38);
     }
 
     const tex = new THREE.CanvasTexture(c);
@@ -268,10 +387,8 @@ export function createDVDStack(scene) {
     tex.wrapS = THREE.ClampToEdgeWrapping;
     tex.wrapT = THREE.ClampToEdgeWrapping;
     tex.minFilter = THREE.LinearFilter;
-
     tex.center.set(0.5, 0.5);
     tex.rotation = -Math.PI / 2;
-
     return tex;
   }
 
@@ -302,7 +419,11 @@ export function createDVDStack(scene) {
           mesh.userData.avgColor = avg;
 
           // ✅ Apply tint + title texture to ALL vertical side faces (X and Z)
-          const spineTex = makeSpineTexture(mesh.userData.data?.title, avg);
+          const spineTex = makeSpineTexture(
+            mesh.userData.data?.title,
+            mesh.userData.data?.year,
+            avg,
+          );
           for (const face of [FACE_SPINE_POSX, FACE_SPINE_NEGX, FACE_SIDE_POSZ, FACE_SIDE_NEGZ]) {
             mats[face].color.copy(avg);
             mats[face].map = spineTex;
@@ -360,7 +481,7 @@ export function createDVDStack(scene) {
     m.material[FACE_BACK].needsUpdate = true;
 
     // Default spine title (dark), will be re-tinted once poster loads
-    const spineTex = makeSpineTexture(d.title, m.userData.avgColor);
+    const spineTex = makeSpineTexture(d.title, d.year, m.userData.avgColor);
     for (const face of [FACE_SPINE_POSX, FACE_SPINE_NEGX, FACE_SIDE_POSZ, FACE_SIDE_NEGZ]) {
       m.material[face].map = spineTex;
       m.material[face].needsUpdate = true;
@@ -421,9 +542,18 @@ export function createDVDStack(scene) {
       visible.sort((a, b) => a.userData.originalIndex - b.userData.originalIndex);
     }
 
+    // Reorder cascade: each new-position-i DVD's target update is held back
+    // by i * staggerMs. updateTargets honours `reorderStartAt` and keeps the
+    // mesh's target frozen at its previous position until its turn arrives —
+    // visually that reads as a wave moving through the tower rather than a
+    // simultaneous snap.
+    const now = performance.now();
+    const stagger = Math.max(0, config.reorderStaggerMs ?? 0);
+
     for (let i = 0; i < visible.length; i++) {
       visible[i].userData.index = i;
       visible[i].userData.homePos.y = i * STEP_Y;
+      visible[i].userData.reorderStartAt = stagger > 0 ? now + i * stagger : 0;
     }
   }
 
@@ -499,8 +629,13 @@ export function createDVDStack(scene) {
     mouseSmooth.y += (mouseTarget.y - mouseSmooth.y) * aMouse;
 
     if (mode === "tower") {
+      // Honour reorder stagger — DVDs whose start-time hasn't arrived yet
+      // keep their current target (effectively their previous Y), so the
+      // rearrangement cascades visually through the tower.
+      const now = performance.now();
       for (const m of dvds) {
         const u = m.userData;
+        if (u.reorderStartAt && now < u.reorderStartAt) continue;
         u.targetPos.copy(u.homePos);
         u.targetRot.copy(u.homeRot);
       }

@@ -65,6 +65,11 @@ export const config = {
   buildDropSmooth: 14.0,
   buildAllowSkipKey: true,
 
+  // Sort / filter reorder cascade — each DVD's move starts N ms after the
+  // previous so the rearrangement reads as a wave rather than a snap.
+  // Zeroed under reduced motion.
+  reorderStaggerMs: 12,
+
   // TMDB — the API key now lives server-side in the /api/tmdb proxy
   // (Vercel env var TMDB_API_KEY). The client only configures the language.
   TMDB_LANGUAGE: "en-GB",
