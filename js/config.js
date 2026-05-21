@@ -23,6 +23,11 @@ export const config = {
   focusCamX: 2.0,
   focusCamYOffset: 2.0,
   focusTargetYOffset: 1.2,
+  // Vertical lift of the focused DVD *above* the camera's look-at point.
+  // 0 = DVD sits dead-centre in view (current desktop behaviour). >0 raises
+  // the DVD so the meta panel can claim the bottom of the screen without
+  // covering it — used on mobile.
+  focusedDvdLift: 0,
 
   // Mouse sway (inverted)
   swayCamX: 1.2,

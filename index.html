@@ -820,62 +820,59 @@
     #emptyClear:hover { background: white; }
 
     @media (max-width: 720px) {
-      /* Mobile layout uses TWO top rows so nothing competes for horizontal
-         space: brand sits top-LEFT alone, ⋯ sits top-RIGHT alone, and the
-         toolbar pill drops to a second row centred below them. */
-      .byline-wrap {
-        top: 0; left: 0; right: auto;
-        padding: 0.75rem 1rem;
-        min-height: 0;
-      }
-      #byline { font-size: 14px; }
+      /* Brand wrap is INTENTIONALLY not overridden on mobile — it keeps the
+         exact same top/left/padding as desktop (which itself mirrors the
+         main madebysam.dev header). That way crossing between the two sites
+         doesn't visibly shift the brand position. */
 
       .more-menu { top: 10px; right: 10px; }
       .more-menu__trigger { width: 34px; height: 34px; font-size: 17px; }
       .more-menu__body { width: 210px; }
 
-      /* Toolbar drops to a second row, smaller buttons */
+      /* Toolbar drops to a second row, sitting below the brand area. */
       .toolbar {
-        top: 52px;
+        top: 80px;
         max-width: calc(100vw - 16px);
       }
       .toolbar__btn { padding: 6px 10px; font-size: 12px; }
       .toolbar__badge { font-size: 9px; padding: 1px 5px; }
 
-      /* Filter dropdown anchored under the toolbar button */
+      /* Filter dropdown stays anchored under its toolbar button. */
       .filterpanel__body { width: min(300px, calc(100vw - 24px)); }
 
-      /* Info panel: full-width sheet at the bottom */
+      /* Info panel: shorter bottom sheet so it doesn't bury the focused
+         DVD (which we also lift via config.focusedDvdLift on mobile). */
       #meta {
         right: 12px; left: 12px;
-        top: auto; bottom: 88px;
+        top: auto; bottom: 80px;
         transform: none;
         width: auto;
-        max-height: 45vh;
+        max-height: 32vh;
       }
       .modal__panel { padding: 18px; }
 
-      /* CTA: circular "+" FAB bottom-LEFT */
+      /* CTA: smaller circular "+" FAB bottom-LEFT */
       #btnLoadYours {
         bottom: 16px; left: 16px;
         transform: none;
-        width: 56px; height: 56px;
+        width: 44px; height: 44px;
         padding: 0;
         border-radius: 50%;
         font-size: 0;
+        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.4);
       }
       #btnLoadYours:hover { transform: translateY(-1px); }
       #btnLoadYours .cta__label { display: none; }
       #btnLoadYours .cta__icon {
         display: inline-block;
-        font-size: 28px;
+        font-size: 24px;
         font-weight: 300;
         line-height: 1;
       }
 
       /* TMDB icon: bottom-right, smaller */
       #footer { bottom: 14px; right: 14px; }
-      .footer__tmdb-icon { height: 22px; }
+      .footer__tmdb-icon { height: 20px; }
     }
   </style>
 </head>

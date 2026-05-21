@@ -645,7 +645,14 @@ export function createDVDStack(scene) {
     const idx = focused.userData.index;
     const fy = focused.userData.homePos.y;
 
-    const featuredPos = new THREE.Vector3(0, fy + config.focusTargetYOffset, 0.6);
+    // Featured DVD sits at the camera look-at Y plus an optional lift, so
+    // it can float above the look-at point (used on mobile to keep the
+    // DVD clear of the bottom info panel).
+    const featuredPos = new THREE.Vector3(
+      0,
+      fy + config.focusTargetYOffset + (config.focusedDvdLift ?? 0),
+      0.6,
+    );
 
     for (const m of dvds) {
       const u = m.userData;

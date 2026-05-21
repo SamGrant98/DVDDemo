@@ -282,10 +282,14 @@ const isMobileLayout  = isCoarsePointer || isNarrowScreen;
 
 if (isMobileLayout) {
   config.focusCamZ          = 11.5;  // push camera back from focused DVD
-  config.featuredScale      = 1.55;  // smaller "hero" size — was 2.0
+  config.featuredScale      = 1.45;  // smaller "hero" size — was 2.0
   config.focusCamX          = 0.4;   // less off-axis offset
-  config.focusTargetYOffset = 0.8;
-  config.dragScale          = (config.dragScale ?? 0.00019) * 2.0; // faster finger drag
+  config.focusTargetYOffset = 0.4;
+  // Lifts the focused DVD significantly above the camera look-at so it
+  // sits in the upper half of the screen and stays clear of the bottom
+  // info panel.
+  config.focusedDvdLift     = 3.2;
+  config.dragScale          = (config.dragScale ?? 0.00019) * 2.0;
 }
 
 // ---------- Mobile gyro tilt -----------------------------------------------
@@ -298,10 +302,14 @@ let gyroEnabled = false;
 const gyroState = { x: 0, y: 0 };
 function handleDeviceOrientation(e) {
   if (e.gamma == null || e.beta == null) return;
-  // gamma  ∈ [-90, 90]  — phone tilt left/right
+  // gamma  ∈ [-90, 90]  — phone tilt left/right (positive = right)
   // beta   ∈ [-180,180] — phone tilt forward/back (~30° is "comfy hold")
-  gyroState.x = Math.max(-1, Math.min(1, e.gamma / 25));
-  gyroState.y = Math.max(-1, Math.min(1, (e.beta - 30) / 25));
+  //
+  // Inverted to match the mouse convention used by getMouseNDC: phone-right
+  // produces a negative x so the camera shifts LEFT, which visually moves
+  // the tower RIGHT — i.e. the tower "follows" the phone tilt.
+  gyroState.x = Math.max(-1, Math.min(1, -e.gamma / 25));
+  gyroState.y = Math.max(-1, Math.min(1, -(e.beta - 30) / 25));
 }
 function tryEnableGyro() {
   if (gyroEnabled || !isMobileLayout) return;
@@ -661,11 +669,13 @@ function animate() {
 
     const towerY = scroll * dvdStack.getStackHeight();
 
+    // Feed gyro (if enabled) into the camera rig so BOTH the tower sway
+    // (updateTower) and the focused-DVD tilt (setFeaturedMouseNDC below)
+    // are driven by phone orientation. Falls back silently to mouse.
+    if (gyroEnabled) cameraRig.setSwayOverride(gyroState);
+
     if (dvdStack.getMode() === "focus") {
-      // Prefer gyro on mobile (after permission is granted), pointer/mouse
-      // otherwise. Falls back silently if gyro is unsupported or denied.
-      const ndc = gyroEnabled ? gyroState : cameraRig.getMouseNDC();
-      dvdStack.setFeaturedMouseNDC(ndc);
+      dvdStack.setFeaturedMouseNDC(cameraRig.getMouseNDC());
     } else {
       dvdStack.setFeaturedMouseNDC({ x: 0, y: 0 });
     }
