@@ -272,6 +272,59 @@ window.addEventListener("resize", () => {
   backdrop.setSize(window.innerWidth, window.innerHeight);
 });
 
+// ---------- Mobile / touch device tuning ----------
+// Detected once at boot. Mutates `config` so the focused-DVD framing has more
+// breathing room on phone screens and finger-drag scrolls faster than mouse
+// wheel does. Desktop is untouched.
+const isCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
+const isNarrowScreen  = window.matchMedia("(max-width: 720px)").matches;
+const isMobileLayout  = isCoarsePointer || isNarrowScreen;
+
+if (isMobileLayout) {
+  config.focusCamZ          = 11.5;  // push camera back from focused DVD
+  config.featuredScale      = 1.55;  // smaller "hero" size — was 2.0
+  config.focusCamX          = 0.4;   // less off-axis offset
+  config.focusTargetYOffset = 0.8;
+  config.dragScale          = (config.dragScale ?? 0.00019) * 2.0; // faster finger drag
+}
+
+// ---------- Mobile gyro tilt -----------------------------------------------
+// On touch devices, use DeviceOrientationEvent to drive the focused-DVD sway
+// instead of the pointer. iOS 13+ requires explicit permission gated on a
+// user gesture — we try on first pointerdown. Android works without prompt.
+// If the user denies (or the API doesn't exist) we fall back silently to
+// pointer/mouseNDC.
+let gyroEnabled = false;
+const gyroState = { x: 0, y: 0 };
+function handleDeviceOrientation(e) {
+  if (e.gamma == null || e.beta == null) return;
+  // gamma  ∈ [-90, 90]  — phone tilt left/right
+  // beta   ∈ [-180,180] — phone tilt forward/back (~30° is "comfy hold")
+  gyroState.x = Math.max(-1, Math.min(1, e.gamma / 25));
+  gyroState.y = Math.max(-1, Math.min(1, (e.beta - 30) / 25));
+}
+function tryEnableGyro() {
+  if (gyroEnabled || !isMobileLayout) return;
+  if (typeof DeviceOrientationEvent === "undefined") return;
+  if (typeof DeviceOrientationEvent.requestPermission === "function") {
+    // iOS 13+ — must be called from a user gesture handler
+    DeviceOrientationEvent.requestPermission()
+      .then((state) => {
+        if (state === "granted") {
+          window.addEventListener("deviceorientation", handleDeviceOrientation);
+          gyroEnabled = true;
+        }
+      })
+      .catch(() => {});
+  } else {
+    window.addEventListener("deviceorientation", handleDeviceOrientation);
+    gyroEnabled = true;
+  }
+}
+if (isMobileLayout) {
+  document.addEventListener("pointerdown", tryEnableGyro, { once: true });
+}
+
 // ---------- Post-build camera hold ----------
 let postBuildHold = false;
 let releasedByUser = false;
@@ -609,7 +662,10 @@ function animate() {
     const towerY = scroll * dvdStack.getStackHeight();
 
     if (dvdStack.getMode() === "focus") {
-      dvdStack.setFeaturedMouseNDC(cameraRig.getMouseNDC());
+      // Prefer gyro on mobile (after permission is granted), pointer/mouse
+      // otherwise. Falls back silently if gyro is unsupported or denied.
+      const ndc = gyroEnabled ? gyroState : cameraRig.getMouseNDC();
+      dvdStack.setFeaturedMouseNDC(ndc);
     } else {
       dvdStack.setFeaturedMouseNDC({ x: 0, y: 0 });
     }

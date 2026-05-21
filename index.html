@@ -820,56 +820,61 @@
     #emptyClear:hover { background: white; }
 
     @media (max-width: 720px) {
-      .toolbar { max-width: calc(100vw - 16px); }
-      .toolbar__btn { padding: 8px 12px; font-size: 13px; }
-      .more-menu__trigger { width: 40px; height: 40px; font-size: 20px; }
+      /* Mobile layout uses TWO top rows so nothing competes for horizontal
+         space: brand sits top-LEFT alone, ⋯ sits top-RIGHT alone, and the
+         toolbar pill drops to a second row centred below them. */
+      .byline-wrap {
+        top: 0; left: 0; right: auto;
+        padding: 0.75rem 1rem;
+        min-height: 0;
+      }
+      #byline { font-size: 14px; }
 
-      /* Info panel: full-width sheet rising from the bottom centre. */
+      .more-menu { top: 10px; right: 10px; }
+      .more-menu__trigger { width: 34px; height: 34px; font-size: 17px; }
+      .more-menu__body { width: 210px; }
+
+      /* Toolbar drops to a second row, smaller buttons */
+      .toolbar {
+        top: 52px;
+        max-width: calc(100vw - 16px);
+      }
+      .toolbar__btn { padding: 6px 10px; font-size: 12px; }
+      .toolbar__badge { font-size: 9px; padding: 1px 5px; }
+
+      /* Filter dropdown anchored under the toolbar button */
+      .filterpanel__body { width: min(300px, calc(100vw - 24px)); }
+
+      /* Info panel: full-width sheet at the bottom */
       #meta {
         right: 12px; left: 12px;
         top: auto; bottom: 88px;
         transform: none;
         width: auto;
-        max-height: 50vh;
+        max-height: 45vh;
       }
-      .filterpanel__body { width: min(300px, calc(100vw - 24px)); }
       .modal__panel { padding: 18px; }
 
-      /* CTA becomes a circular "+" FAB bottom-LEFT so the bottom edge
-         isn't crowded between byline / CTA / TMDB. */
+      /* CTA: circular "+" FAB bottom-LEFT */
       #btnLoadYours {
-        bottom: 16px;
-        left: 16px;
+        bottom: 16px; left: 16px;
         transform: none;
-        width: 56px;
-        height: 56px;
+        width: 56px; height: 56px;
         padding: 0;
         border-radius: 50%;
         font-size: 0;
       }
-      #btnLoadYours:hover {
-        transform: translateY(-1px); /* override desktop translateX(-50%) */
-      }
+      #btnLoadYours:hover { transform: translateY(-1px); }
       #btnLoadYours .cta__label { display: none; }
       #btnLoadYours .cta__icon {
         display: inline-block;
-        font-size: 30px;
+        font-size: 28px;
         font-weight: 300;
         line-height: 1;
       }
 
-      /* Brand moves to top, sits to the LEFT of the ⋯ trigger. Toolbar
-         pill claims the centre. */
-      .byline-wrap {
-        top: 0;
-        left: auto;
-        right: 60px;
-        padding: 1rem 0.5rem;
-        min-height: 40px;
-      }
-      #byline { font-size: 14px; }
-
-      #footer { bottom: 12px; right: 12px; }
+      /* TMDB icon: bottom-right, smaller */
+      #footer { bottom: 14px; right: 14px; }
       .footer__tmdb-icon { height: 22px; }
     }
   </style>
