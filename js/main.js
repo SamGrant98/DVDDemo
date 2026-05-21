@@ -529,6 +529,22 @@ try {
   booted = false;
 }
 
+// ---------- Cross-origin page fades ----------
+// Any link to a madebysam.dev property (the main site, sibling subdomains)
+// triggers a body fade-out before navigation, so the cross-origin jump
+// feels continuous instead of a hard cut. Browser handles the inbound fade
+// via the page-fade-in keyframe on body.
+document.querySelectorAll('a[href*="madebysam.dev"]').forEach((a) => {
+  // Skip if it's set to open in a new tab — that's a different intent.
+  if (a.target === "_blank") return;
+  a.addEventListener("click", (e) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    e.preventDefault();
+    document.body.classList.add("is-leaving");
+    setTimeout(() => { window.location.href = a.href; }, 300);
+  });
+});
+
 // ---------- LOOP ----------
 const clock = new THREE.Clock();
 let wasBuilding = true;

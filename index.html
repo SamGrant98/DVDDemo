@@ -2,6 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>dvd shelf — made by sam</title>
 
   <script type="importmap">
@@ -16,6 +17,15 @@
   <style>
     html, body { margin: 0; height: 100%; overflow: hidden; background: #111114; overscroll-behavior: none; }
     canvas { touch-action: none; }
+
+    /* Page fade-in on load + outgoing fade when navigating to another
+       madebysam.dev property. Keeps cross-origin nav feeling continuous. */
+    body { animation: page-fade-in 0.4s ease-out; }
+    body.is-leaving { transition: opacity 0.3s ease-out; opacity: 0; }
+    @keyframes page-fade-in {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
 
     #ui { display: none; }
     #hint { display: none; }
@@ -413,7 +423,10 @@
     }
     .meta__action-delete:hover { background: rgba(255,80,80,0.25); }
 
-    /* ============ Bottom-centre CTA ============ */
+    /* ============ Primary CTA ============
+       Desktop: bottom-centre pill with the full label.
+       Mobile: bottom-left circular FAB with a "+" so the bottom of the
+       screen isn't congested. */
     #btnLoadYours {
       position: fixed;
       bottom: 24px;
@@ -436,6 +449,8 @@
       transform: translateX(-50%) translateY(-1px);
       box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
     }
+    /* The "+" icon swap is mobile-only — see media query at bottom. */
+    #btnLoadYours .cta__icon { display: none; }
 
     /* ============ Corners ============ */
     /* "made by sam" brand link — literally mirrors the main madebysam.dev
@@ -805,29 +820,57 @@
     #emptyClear:hover { background: white; }
 
     @media (max-width: 720px) {
-      .toolbar { max-width: calc(100vw - 16px); font-size: 11px; }
-      .toolbar__btn { padding: 6px 10px; }
+      .toolbar { max-width: calc(100vw - 16px); }
+      .toolbar__btn { padding: 8px 12px; font-size: 13px; }
+      .more-menu__trigger { width: 40px; height: 40px; font-size: 20px; }
+
+      /* Info panel: full-width sheet rising from the bottom centre. */
       #meta {
         right: 12px; left: 12px;
-        top: auto; bottom: 90px;
+        top: auto; bottom: 88px;
         transform: none;
         width: auto;
-        max-height: 45vh;
+        max-height: 50vh;
       }
-      .filterpanel__body { width: min(280px, calc(100vw - 24px)); }
+      .filterpanel__body { width: min(300px, calc(100vw - 24px)); }
       .modal__panel { padding: 18px; }
-      #btnLoadYours { bottom: 16px; padding: 10px 18px; font-size: 12px; }
-      /* On narrow screens move the byline back to the bottom-left so it
-         doesn't overlap with the centred toolbar. Wrapper handles
-         positioning; the link inside keeps its typography. */
-      .byline-wrap {
-        top: auto;
-        bottom: 48px;
-        left: 0;
-        padding: 0 12px;
-        min-height: 0;
+
+      /* CTA becomes a circular "+" FAB bottom-LEFT so the bottom edge
+         isn't crowded between byline / CTA / TMDB. */
+      #btnLoadYours {
+        bottom: 16px;
+        left: 16px;
+        transform: none;
+        width: 56px;
+        height: 56px;
+        padding: 0;
+        border-radius: 50%;
+        font-size: 0;
       }
-      #footer { bottom: 50px; }
+      #btnLoadYours:hover {
+        transform: translateY(-1px); /* override desktop translateX(-50%) */
+      }
+      #btnLoadYours .cta__label { display: none; }
+      #btnLoadYours .cta__icon {
+        display: inline-block;
+        font-size: 30px;
+        font-weight: 300;
+        line-height: 1;
+      }
+
+      /* Brand moves to top, sits to the LEFT of the ⋯ trigger. Toolbar
+         pill claims the centre. */
+      .byline-wrap {
+        top: 0;
+        left: auto;
+        right: 60px;
+        padding: 1rem 0.5rem;
+        min-height: 40px;
+      }
+      #byline { font-size: 14px; }
+
+      #footer { bottom: 12px; right: 12px; }
+      .footer__tmdb-icon { height: 22px; }
     }
   </style>
 </head>
@@ -913,8 +956,11 @@
     </div>
   </div>
 
-  <!-- Primary CTA — bottom-centre, standalone. -->
-  <button id="btnLoadYours" type="button">Load your collection</button>
+  <!-- Primary CTA — pill on desktop, circular "+" FAB on mobile (CSS swap). -->
+  <button id="btnLoadYours" type="button" aria-label="Load your collection">
+    <span class="cta__label">Load your collection</span>
+    <span class="cta__icon" aria-hidden="true">+</span>
+  </button>
 
   <!-- Top-left brand link. Wrapper mirrors the main site's flex header so
        the brand sits at the same y position (centred against a 2rem-tall
