@@ -743,6 +743,20 @@ export function createDVDStack(scene) {
     setFilter,
     clearFilter: () => setFilter(null),
     getVisibleCount: () => (filterPredicate ? visibleCount : rows.length),
+    getStepY: () => STEP_Y,
+    // Find the next/previous *visible* mesh by index relative to a mesh.
+    // Used by the scroll-while-focused step-through behaviour.
+    findNeighbour(mesh, direction) {
+      if (!mesh) return null;
+      const startIdx = mesh.userData.index;
+      let idx = startIdx + direction;
+      while (idx >= 0 && idx < rows.length) {
+        const candidate = dvds.find(m => m.userData.index === idx && m.visible);
+        if (candidate) return candidate;
+        idx += direction;
+      }
+      return null;
+    },
 
     updateTargets,
     apply,

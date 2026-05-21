@@ -291,12 +291,9 @@ if (isMobileLayout) {
   config.focusedDvdLift     = 1.5;
 
   // ---- Touch input feel ----
-  // Generous tap-vs-drag threshold so finger wobble during a tap doesn't
-  // start scrolling. The towerScroll module ALSO applies a time grace
-  // (~150ms) so even movements past the distance threshold within that
-  // window stay classified as tap. Once both conditions are exceeded,
-  // dragging is snappy via the bumped dragScale.
-  config.dragThresholdPx    = 24;  // was 7 — way more forgiving of taps
+  // Reverted the tap-detection bumps that made things worse. Stick with
+  // the default 7px drag threshold and instead make scroll FASTER once it
+  // does start, which was the original ask.
   config.dragScale          = (config.dragScale ?? 0.00019) * 2.5;
   config.smoothScroll       = 15.0;
 
@@ -730,20 +727,39 @@ function animate() {
       postBuildHold = false;
     }
 
-    // Exit focus on scroll: if the towerScroll target shifts substantially
-    // while a DVD is focused, drop focus and let tower mode catch up to
-    // the new position. Threshold is higher than zero so accidental
-    // micro-drags during a tap don't kick you out of focus.
+    // Step-focus on scroll: when a DVD is focused and the user scrolls,
+    // step the focus to the next / previous visible DVD instead of
+    // exiting focus. Snap the scroll target to the new focused DVD's
+    // position so the camera follows cleanly and the next scroll input
+    // starts from a fresh baseline.
     const currentTarget = towerScroll.getTarget();
     if (
       dvdStack.getMode() === "focus" &&
-      lastTargetForExit != null &&
-      Math.abs(currentTarget - lastTargetForExit) > 0.02
+      lastTargetForExit != null
     ) {
-      dvdStack.setModeTower();
-      hideMeta();
+      const delta = currentTarget - lastTargetForExit;
+      if (Math.abs(delta) > 0.015) {
+        const direction = delta > 0 ? 1 : -1;
+        const focused = dvdStack.getFocused();
+        const next = dvdStack.findNeighbour(focused, direction);
+        if (next) {
+          dvdStack.setModeFocus(next);
+          showMetaFor(next);
+          const stackH = dvdStack.getStackHeight();
+          const snappedTarget = stackH > 0
+            ? (next.userData.homePos.y / stackH)
+            : 0;
+          towerScroll.snapTo(snappedTarget);
+          lastTargetForExit = snappedTarget;
+        } else {
+          // Hit the end of the visible set in that direction —
+          // reset baseline so accumulated scroll doesn't bounce.
+          lastTargetForExit = currentTarget;
+        }
+      }
+    } else {
+      lastTargetForExit = currentTarget;
     }
-    lastTargetForExit = currentTarget;
 
     // Wheel-ratchet tick when the scroll moves meaningfully. playScrollTick
     // applies its own rate-limit, so we don't need to throttle further.

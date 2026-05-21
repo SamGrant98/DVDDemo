@@ -9,15 +9,8 @@ export function createTowerScroll() {
   let pointerMoved = false;
   let downY = 0;
   let lastY = 0;
-  let pointerDownTime = 0;
 
   let locked = false;
-
-  // Drag classification grace window. Movement during the first
-  // `tapGraceMs` after a pointer-down does NOT classify as a drag,
-  // regardless of distance — quick taps usually have some natural drift
-  // and we don't want that to count as scrolling.
-  const tapGraceMs = 150;
 
   const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
@@ -35,7 +28,6 @@ export function createTowerScroll() {
     pointerDown = true;
     pointerMoved = false;
     downY = lastY = e.clientY;
-    pointerDownTime = performance.now();
   });
 
   window.addEventListener(
@@ -45,22 +37,10 @@ export function createTowerScroll() {
       if (!pointerDown) return;
 
       const dyTotal = e.clientY - downY;
-      const elapsed = performance.now() - pointerDownTime;
-
-      if (!pointerMoved) {
-        // Need BOTH movement past the distance threshold AND time past the
-        // tap-grace window before we commit to "this is a drag, not a
-        // tap". Without the time gate, even very fast taps would cross the
-        // distance threshold during normal finger wobble and be classified
-        // as drags (and then scroll the tower instead of focusing a DVD).
-        const distOK = Math.abs(dyTotal) > config.dragThresholdPx;
-        const timeOK = elapsed > tapGraceMs;
-        if (distOK && timeOK) {
-          pointerMoved = true;
-        } else {
-          return;
-        }
+      if (!pointerMoved && Math.abs(dyTotal) > config.dragThresholdPx) {
+        pointerMoved = true;
       }
+      if (!pointerMoved) return;
 
       const dy = e.clientY - lastY;
       lastY = e.clientY;
