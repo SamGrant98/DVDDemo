@@ -284,11 +284,11 @@ if (isMobileLayout) {
   config.focusCamZ          = 11.5;  // push camera back from focused DVD
   config.featuredScale      = 1.45;  // smaller "hero" size — was 2.0
   config.focusCamX          = 0.4;   // less off-axis offset
-  config.focusTargetYOffset = 0.4;
-  // Lifts the focused DVD significantly above the camera look-at so it
-  // sits in the upper half of the screen and stays clear of the bottom
-  // info panel.
-  config.focusedDvdLift     = 3.2;
+  config.focusTargetYOffset = 0.6;
+  // Lifts the focused DVD above the camera look-at so it sits above the
+  // bottom info panel. Tuned to leave roughly the upper two-thirds of the
+  // screen for the DVD and the lower third for the panel.
+  config.focusedDvdLift     = 1.5;
   config.dragScale          = (config.dragScale ?? 0.00019) * 2.0;
 }
 
@@ -299,6 +299,7 @@ if (isMobileLayout) {
 // If the user denies (or the API doesn't exist) we fall back silently to
 // pointer/mouseNDC.
 let gyroEnabled = false;
+let gyroEventCount = 0;
 const gyroState = { x: 0, y: 0 };
 function handleDeviceOrientation(e) {
   if (e.gamma == null || e.beta == null) return;
@@ -310,28 +311,44 @@ function handleDeviceOrientation(e) {
   // the tower RIGHT — i.e. the tower "follows" the phone tilt.
   gyroState.x = Math.max(-1, Math.min(1, -e.gamma / 25));
   gyroState.y = Math.max(-1, Math.min(1, -(e.beta - 30) / 25));
-}
-function tryEnableGyro() {
-  if (gyroEnabled || !isMobileLayout) return;
-  if (typeof DeviceOrientationEvent === "undefined") return;
-  if (typeof DeviceOrientationEvent.requestPermission === "function") {
-    // iOS 13+ — must be called from a user gesture handler
-    DeviceOrientationEvent.requestPermission()
-      .then((state) => {
-        if (state === "granted") {
-          window.addEventListener("deviceorientation", handleDeviceOrientation);
-          gyroEnabled = true;
-        }
-      })
-      .catch(() => {});
-  } else {
-    window.addEventListener("deviceorientation", handleDeviceOrientation);
-    gyroEnabled = true;
+  if (gyroEventCount < 3) {
+    console.log("[gyro] event", { gamma: e.gamma, beta: e.beta, x: gyroState.x, y: gyroState.y });
+    gyroEventCount++;
   }
 }
-if (isMobileLayout) {
-  document.addEventListener("pointerdown", tryEnableGyro, { once: true });
+function attachGyroListeners() {
+  // Some Android browsers only fire `deviceorientationabsolute`, so listen
+  // to both. The handler is idempotent on event values.
+  window.addEventListener("deviceorientation", handleDeviceOrientation);
+  window.addEventListener("deviceorientationabsolute", handleDeviceOrientation);
+  gyroEnabled = true;
+  console.log("[gyro] listeners attached");
 }
+function tryEnableGyro() {
+  if (gyroEnabled) return;
+  if (typeof DeviceOrientationEvent === "undefined") {
+    console.log("[gyro] DeviceOrientationEvent unsupported");
+    return;
+  }
+  if (typeof DeviceOrientationEvent.requestPermission === "function") {
+    // iOS 13+ — must be called from a user gesture handler. We don't use
+    // { once: true } on the click listener so the user can re-try by
+    // tapping again if they dismiss the permission prompt the first time.
+    DeviceOrientationEvent.requestPermission()
+      .then((state) => {
+        console.log("[gyro] iOS permission:", state);
+        if (state === "granted") attachGyroListeners();
+      })
+      .catch((err) => console.log("[gyro] permission error:", err));
+  } else {
+    attachGyroListeners();
+  }
+}
+// Re-tryable on every tap until enabled (the early-return then guards).
+// No mobile gate — desktop devices simply won't emit events; harmless.
+document.addEventListener("pointerdown", tryEnableGyro);
+// Debug handle for the console
+window.__gyro = { state: gyroState, isEnabled: () => gyroEnabled, events: () => gyroEventCount };
 
 // ---------- Post-build camera hold ----------
 let postBuildHold = false;

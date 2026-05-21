@@ -844,12 +844,20 @@
          DVD (which we also lift via config.focusedDvdLift on mobile). */
       #meta {
         right: 12px; left: 12px;
-        top: auto; bottom: 80px;
+        top: auto; bottom: 72px;
         transform: none;
         width: auto;
-        max-height: 32vh;
+        max-height: 38vh;
       }
       .modal__panel { padding: 18px; }
+      /* Hide the big backdrop thumbnail on mobile — at panel width it
+         dominates and pushes the actual metadata below the fold. The
+         thumbnail's content (the film backdrop) is also showing as the
+         scene background already, so it's redundant. */
+      #meta .meta__thumb { display: none; }
+      /* Tighten meta typography for the narrow sheet */
+      .meta__title { font-size: 13px; }
+      .meta__overview { font-size: 11.5px; line-height: 1.45; }
 
       /* CTA: smaller circular "+" FAB bottom-LEFT */
       #btnLoadYours {
