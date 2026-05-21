@@ -72,6 +72,11 @@ export function createTowerScroll() {
       target = clamp01(t);
     },
 
+    // Exposed so main.js can detect "user is trying to scroll" — used to
+    // exit focus mode on scroll input (target changes immediately on
+    // wheel/drag, before scroll smooths into it).
+    getTarget() { return target; },
+
     // NEW: hard set both current scroll + target (prevents 1-frame camera jumps)
     snapTo(t) {
       const v = clamp01(t);

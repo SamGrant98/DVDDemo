@@ -289,7 +289,9 @@ if (isMobileLayout) {
   // bottom info panel. Tuned to leave roughly the upper two-thirds of the
   // screen for the DVD and the lower third for the panel.
   config.focusedDvdLift     = 1.5;
-  config.dragScale          = (config.dragScale ?? 0.00019) * 2.0;
+  // Finger drag should feel snappy — bumped further than desktop.
+  config.dragScale          = (config.dragScale ?? 0.00019) * 3.0;
+  config.smoothScroll       = 15.0; // was 10 — quicker catch-up on touch
 }
 
 // ---------- Mobile gyro tilt -----------------------------------------------
@@ -344,9 +346,19 @@ function tryEnableGyro() {
     attachGyroListeners();
   }
 }
-// Re-tryable on every tap until enabled (the early-return then guards).
-// No mobile gate — desktop devices simply won't emit events; harmless.
-document.addEventListener("pointerdown", tryEnableGyro);
+// No auto-attach: iOS Safari needs requestPermission() to come from an
+// explicit user-gesture click on an "enable" affordance. The Tilt toggle in
+// the ⋯ menu provides that gesture and gives the user visible control.
+function disableGyro() {
+  if (!gyroEnabled) return;
+  window.removeEventListener("deviceorientation", handleDeviceOrientation);
+  window.removeEventListener("deviceorientationabsolute", handleDeviceOrientation);
+  gyroEnabled = false;
+  gyroState.x = 0;
+  gyroState.y = 0;
+  cameraRig.setSwayOverride(null);
+  console.log("[gyro] disabled");
+}
 // Debug handle for the console
 window.__gyro = { state: gyroState, isEnabled: () => gyroEnabled, events: () => gyroEventCount };
 
@@ -357,6 +369,10 @@ let holdScroll = 0;
 
 // Tracked scroll position for the ratchet-tick SFX
 let lastScrollForTick = 0;
+
+// Tracked towerScroll target for the "scroll-while-focused exits focus"
+// behaviour. Null until first frame after focus begins.
+let lastTargetForExit = null;
 
 window.addEventListener(
   "wheel",
@@ -431,6 +447,27 @@ audioToggle?.addEventListener("click", () => {
 ambientToggle?.addEventListener("click", () => {
   setAmbientEnabled(!isAmbientEnabled());
   syncAudioToggleUI();
+});
+
+// ----- Tilt toggle (gyro) -----
+// On iOS Safari, this click IS the user gesture that requestPermission()
+// needs. If the iPhone has "Motion & Orientation Access" disabled in
+// Settings → Safari, the call resolves to "denied" without showing a
+// prompt — the toggle just stays off and we log it.
+const tiltToggle = document.getElementById("tiltToggle");
+function syncTiltToggleUI() {
+  tiltToggle?.setAttribute("aria-pressed", gyroEnabled ? "true" : "false");
+}
+syncTiltToggleUI();
+tiltToggle?.addEventListener("click", () => {
+  if (gyroEnabled) {
+    disableGyro();
+  } else {
+    tryEnableGyro();
+    // gyroEnabled flips async on iOS; sync UI again after the prompt resolves
+    setTimeout(syncTiltToggleUI, 800);
+  }
+  syncTiltToggleUI();
 });
 
 // ----- Reduced motion (settings toggle) -----
@@ -676,6 +713,20 @@ function animate() {
     } else if (postBuildHold && releasedByUser) {
       postBuildHold = false;
     }
+
+    // Exit focus on scroll: if user wheels or drags while a DVD is
+    // focused, the towerScroll target shifts immediately. Detect that
+    // shift, drop focus, and let tower mode catch up to the new position.
+    const currentTarget = towerScroll.getTarget();
+    if (
+      dvdStack.getMode() === "focus" &&
+      lastTargetForExit != null &&
+      Math.abs(currentTarget - lastTargetForExit) > 0.005
+    ) {
+      dvdStack.setModeTower();
+      hideMeta();
+    }
+    lastTargetForExit = currentTarget;
 
     // Wheel-ratchet tick when the scroll moves meaningfully. playScrollTick
     // applies its own rate-limit, so we don't need to throttle further.
