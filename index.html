@@ -450,7 +450,9 @@
       text-decoration: none;
       font: 500 15px/1 system-ui;
       letter-spacing: -0.02em;
-      z-index: 60;
+      /* Sits above the loading overlay (200) and modal backdrops (100) so
+         the brand mark stays visible through every page state. */
+      z-index: 250;
       text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
       transition: color 0.15s;
     }

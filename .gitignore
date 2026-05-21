@@ -1,5 +1,9 @@
-# Personal data (keep local CSVs and covers private — except the public demo + template)
-data/
+# Personal data — files inside data/ stay private by default, but a few
+# specific files (the public demo + upload template + sample) ARE meant to
+# ship. Use data/* (contents) rather than data/ (directory) so the ! rules
+# below actually take effect — git's exception rules don't apply inside a
+# wholly-ignored directory.
+data/*
 !data/sample.csv
 !data/demo.csv
 !data/template.csv
