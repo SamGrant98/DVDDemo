@@ -291,10 +291,12 @@ if (isMobileLayout) {
   config.focusedDvdLift     = 1.5;
 
   // ---- Touch input feel ----
-  // Higher tap-vs-drag threshold so finger wobble during a tap doesn't
-  // register as a drag (and start scrolling). Once you ARE dragging,
-  // scrolling is snappy via the bumped dragScale.
-  config.dragThresholdPx    = 16;  // was 7 — way more forgiving of taps
+  // Generous tap-vs-drag threshold so finger wobble during a tap doesn't
+  // start scrolling. The towerScroll module ALSO applies a time grace
+  // (~150ms) so even movements past the distance threshold within that
+  // window stay classified as tap. Once both conditions are exceeded,
+  // dragging is snappy via the bumped dragScale.
+  config.dragThresholdPx    = 24;  // was 7 — way more forgiving of taps
   config.dragScale          = (config.dragScale ?? 0.00019) * 2.5;
   config.smoothScroll       = 15.0;
 
