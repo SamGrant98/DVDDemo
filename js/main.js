@@ -289,9 +289,21 @@ if (isMobileLayout) {
   // bottom info panel. Tuned to leave roughly the upper two-thirds of the
   // screen for the DVD and the lower third for the panel.
   config.focusedDvdLift     = 1.5;
-  // Finger drag should feel snappy — bumped further than desktop.
-  config.dragScale          = (config.dragScale ?? 0.00019) * 3.0;
-  config.smoothScroll       = 15.0; // was 10 — quicker catch-up on touch
+
+  // ---- Touch input feel ----
+  // Higher tap-vs-drag threshold so finger wobble during a tap doesn't
+  // register as a drag (and start scrolling). Once you ARE dragging,
+  // scrolling is snappy via the bumped dragScale.
+  config.dragThresholdPx    = 16;  // was 7 — way more forgiving of taps
+  config.dragScale          = (config.dragScale ?? 0.00019) * 2.5;
+  config.smoothScroll       = 15.0;
+
+  // ---- Mobile-only tilt amplification ----
+  // The featured-DVD sway is small (8°/10°) by default and gets harder to
+  // see at the smaller mobile featuredScale. Doubling so the gyro-driven
+  // tilt is unmistakably visible.
+  config.featuredMouseTiltX = (config.featuredMouseTiltX ?? 0) * 2;
+  config.featuredMouseTiltY = (config.featuredMouseTiltY ?? 0) * 2;
 }
 
 // ---------- Mobile gyro tilt -----------------------------------------------
@@ -479,7 +491,9 @@ let reducedMotion = (() => {
 })();
 
 // Snapshot the original config values once so we can restore them when the
-// user turns reduced motion back off.
+// user turns reduced motion back off. Capture AFTER the mobile mutations
+// above so reduced-motion restores to the mobile-tuned defaults, not the
+// desktop ones.
 const motionDefaults = {
   floatAmount: config.floatAmount,
   featuredMouseTiltX: config.featuredMouseTiltX,
@@ -714,14 +728,15 @@ function animate() {
       postBuildHold = false;
     }
 
-    // Exit focus on scroll: if user wheels or drags while a DVD is
-    // focused, the towerScroll target shifts immediately. Detect that
-    // shift, drop focus, and let tower mode catch up to the new position.
+    // Exit focus on scroll: if the towerScroll target shifts substantially
+    // while a DVD is focused, drop focus and let tower mode catch up to
+    // the new position. Threshold is higher than zero so accidental
+    // micro-drags during a tap don't kick you out of focus.
     const currentTarget = towerScroll.getTarget();
     if (
       dvdStack.getMode() === "focus" &&
       lastTargetForExit != null &&
-      Math.abs(currentTarget - lastTargetForExit) > 0.005
+      Math.abs(currentTarget - lastTargetForExit) > 0.02
     ) {
       dvdStack.setModeTower();
       hideMeta();
