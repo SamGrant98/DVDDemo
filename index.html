@@ -467,13 +467,15 @@
       left: 0;
       display: flex;
       align-items: center;
+      gap: 0.5em;
       padding: 1.5rem 2rem;          /* --space-3 / --space-4 */
       min-height: 2rem;              /* matches ThemeToggle size on main site */
       box-sizing: content-box;
       z-index: 250;
       pointer-events: none;          /* link below restores pointer-events */
     }
-    #byline {
+    #byline,
+    .byline-crumb {
       color: rgba(255, 255, 255, 0.85);
       text-decoration: none;
       font-family:
@@ -489,6 +491,25 @@
     }
     #byline:hover { color: white; }
     #byline em { font-style: normal; }
+    .byline-sep {
+      color: rgba(255, 255, 255, 0.45);
+      font-family:
+        -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+        Cantarell, 'Helvetica Neue', sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+    }
+    .byline-crumb {
+      color: rgba(255, 255, 255, 0.55);
+      text-transform: lowercase;
+    }
+    .byline-crumb:hover { color: white; }
+    .byline-crumb--current {
+      color: #ff6b35; /* madebysam accent */
+      cursor: default;
+      pointer-events: none;
+    }
 
     #footer {
       position: fixed; bottom: 12px; right: 12px;
@@ -825,6 +846,12 @@
          main madebysam.dev header). That way crossing between the two sites
          doesn't visibly shift the brand position. */
 
+      /* Drop the breadcrumb to brand-only on phones — saves horizontal space
+         beside the FAB / more-menu. Brand still tap-takes you home, and
+         from there back-navigation continues normally. */
+      .byline-wrap .byline-sep,
+      .byline-wrap .byline-crumb { display: none; }
+
       .more-menu { top: 10px; right: 10px; }
       .more-menu__trigger { width: 34px; height: 34px; font-size: 17px; }
       .more-menu__body { width: 210px; }
@@ -976,11 +1003,16 @@
     <span class="cta__icon" aria-hidden="true">+</span>
   </button>
 
-  <!-- Top-left brand link. Wrapper mirrors the main site's flex header so
-       the brand sits at the same y position (centred against a 2rem-tall
-       sibling rather than padded to its own line-box). -->
+  <!-- Top-left brand + breadcrumb. Mirrors the main site's "made by sam /
+       lab / dvd shelf" pattern so a user knows where they are and can
+       climb back up the hierarchy. Existing cross-origin fade JS picks up
+       all madebysam.dev links automatically. -->
   <div class="byline-wrap">
     <a id="byline" href="https://madebysam.dev">made by <em>sam</em></a>
+    <span class="byline-sep" aria-hidden="true">/</span>
+    <a class="byline-crumb" href="https://madebysam.dev/lab">lab</a>
+    <span class="byline-sep" aria-hidden="true">/</span>
+    <span class="byline-crumb byline-crumb--current" aria-current="page">dvd shelf</span>
   </div>
 
   <!-- TMDB icon, bottom-right. Disclaimer lives in Credits modal. -->
