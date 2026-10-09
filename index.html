@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>dvd shelf — made by sam</title>
+  <title>DVD Shelf / made by sam</title>
 
   <script type="importmap">
   {
@@ -435,9 +435,11 @@
       padding: 12px 24px;
       border: 0;
       border-radius: 999px;
-      background: white;
-      color: #18181c;
-      font: 500 13px system-ui;
+      /* Brand primary action from the made by sam shell (orange, Switzer).
+         The fallbacks are the old look, used if the shell doesn't load. */
+      background: var(--msd-orange, white);
+      color: var(--msd-ink, #18181c);
+      font: 700 14px var(--msd-font, system-ui);
       letter-spacing: 0.01em;
       cursor: pointer;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
@@ -461,6 +463,10 @@
        padding-top. We replicate that exact centring by wrapping the byline
        in a flex container with min-height = toggle size. Without the
        wrapper the brand would render ~3px higher than on the main site. */
+    /* Fallback branding: hidden once the shared shell has drawn the real
+       path bar (it sets html.msd-shell-on). */
+    html.msd-shell-on .byline-wrap { display: none; }
+
     .byline-wrap {
       position: fixed;
       top: 0;
@@ -910,6 +916,27 @@
       .footer__tmdb-icon { height: 20px; }
     }
   </style>
+  <!-- made by sam lab shell: brand path + tokens, served by the main site.
+       On localhost it loads from the main site's dev server (npm run dev,
+       port 4321) so the two can be tested together. If it fails to load,
+       the old byline below stays and nothing breaks. -->
+  <script>
+    (function () {
+      var local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+      var base = local ? 'http://localhost:4321' : 'https://madebysam.dev';
+      var css = document.createElement('link');
+      css.rel = 'stylesheet';
+      css.href = base + '/shell/v1/shell.css';
+      document.head.appendChild(css);
+      var js = document.createElement('script');
+      js.type = 'module';
+      js.src = base + '/shell/v1/shell.js';
+      js.dataset.app = 'dvd-shelf';
+      js.dataset.category = 'play';
+      js.dataset.theme = 'dark';
+      document.head.appendChild(js);
+    })();
+  </script>
 </head>
 <body>
   <div id="ui"></div>
